@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "sardis-guard": {
+      "command": "python",
+      "args": ["src/mcp_server.py"],
+      "cwd": "/Users/efebarandurmaz/sardis-mpp-hackathon",
+      "env": {
+        "SARDIS_GUARD_URL": "https://sardis-guard-482463483786.us-central1.run.app"
+      }
+    }
+  }
+}
