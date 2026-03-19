@@ -90,11 +90,36 @@ export function useApi() {
         body: JSON.stringify(body),
       });
       if (res.ok) {
+        const result = await res.json();
         await fetchMandates();
-        return await res.json();
+        return result;
       }
-    } catch { /* */ }
-    return null;
+      const errData = await res.json().catch(() => null);
+      throw new Error(errData?.detail || `Request failed with status ${res.status}`);
+    } catch (e) {
+      if (e instanceof Error) throw e;
+      throw new Error("Network error");
+    }
+  }, [fetchMandates]);
+
+  const delegateMandate = useCallback(async (body: Record<string, unknown>) => {
+    try {
+      const res = await fetch(`${API_BASE}/mandates/delegate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        await fetchMandates();
+        return result;
+      }
+      const errData = await res.json().catch(() => null);
+      throw new Error(errData?.detail || `Request failed with status ${res.status}`);
+    } catch (e) {
+      if (e instanceof Error) throw e;
+      throw new Error("Network error");
+    }
   }, [fetchMandates]);
 
   const freezeMandate = useCallback(async (mandateId: string, reason: string, freezeChildren: boolean) => {
@@ -105,11 +130,16 @@ export function useApi() {
         body: JSON.stringify({ mandate_id: mandateId, reason, freeze_children: freezeChildren }),
       });
       if (res.ok) {
+        const result = await res.json();
         await fetchMandates();
-        return await res.json();
+        return result;
       }
-    } catch { /* */ }
-    return null;
+      const errData = await res.json().catch(() => null);
+      throw new Error(errData?.detail || `Request failed with status ${res.status}`);
+    } catch (e) {
+      if (e instanceof Error) throw e;
+      throw new Error("Network error");
+    }
   }, [fetchMandates]);
 
   const resumeMandate = useCallback(async (mandateId: string) => {
@@ -120,12 +150,63 @@ export function useApi() {
         body: JSON.stringify({ mandate_id: mandateId }),
       });
       if (res.ok) {
+        const result = await res.json();
         await fetchMandates();
-        return await res.json();
+        return result;
       }
-    } catch { /* */ }
-    return null;
+      const errData = await res.json().catch(() => null);
+      throw new Error(errData?.detail || `Request failed with status ${res.status}`);
+    } catch (e) {
+      if (e instanceof Error) throw e;
+      throw new Error("Network error");
+    }
   }, [fetchMandates]);
+
+  const activateKillSwitch = useCallback(async (body: {
+    scope: string;
+    target: string;
+    reason: string;
+    duration_seconds?: number;
+    activated_by?: string;
+  }) => {
+    try {
+      const res = await fetch(`${API_BASE}/kill-switch/activate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        await fetchKillSwitches();
+        return result;
+      }
+      const errData = await res.json().catch(() => null);
+      throw new Error(errData?.detail || `Request failed with status ${res.status}`);
+    } catch (e) {
+      if (e instanceof Error) throw e;
+      throw new Error("Network error");
+    }
+  }, [fetchKillSwitches]);
+
+  const deactivateKillSwitch = useCallback(async (scope: string, target: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/kill-switch/deactivate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scope, target }),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        await fetchKillSwitches();
+        return result;
+      }
+      const errData = await res.json().catch(() => null);
+      throw new Error(errData?.detail || `Request failed with status ${res.status}`);
+    } catch (e) {
+      if (e instanceof Error) throw e;
+      throw new Error("Network error");
+    }
+  }, [fetchKillSwitches]);
 
   // Initial fetch + polling
   useEffect(() => {
@@ -158,8 +239,12 @@ export function useApi() {
     screenEntity,
     screenAddress,
     createMandate,
+    delegateMandate,
     freezeMandate,
     resumeMandate,
+    activateKillSwitch,
+    deactivateKillSwitch,
     refetchMandates: fetchMandates,
+    refetchKillSwitches: fetchKillSwitches,
   };
 }

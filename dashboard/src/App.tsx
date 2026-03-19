@@ -6,6 +6,7 @@ import { PolicyView } from "./components/views/PolicyView";
 import { MandatesView } from "./components/views/MandatesView";
 import { ScreeningView } from "./components/views/ScreeningView";
 import { AuditView } from "./components/views/AuditView";
+import { KillSwitchView } from "./components/views/KillSwitchView";
 import { useEventStream } from "./hooks/useEventStream";
 import { useApi } from "./hooks/useApi";
 import type { ViewId } from "./types";
@@ -21,8 +22,12 @@ function App() {
     killSwitches,
     screenEntity,
     screenAddress,
+    createMandate,
+    delegateMandate,
     freezeMandate,
     resumeMandate,
+    activateKillSwitch,
+    deactivateKillSwitch,
   } = useApi();
 
   // Merge SSE stats with API stats
@@ -66,12 +71,21 @@ function App() {
             mandates={mandates}
             onFreeze={freezeMandate}
             onResume={resumeMandate}
+            onCreateMandate={createMandate}
+            onDelegateMandate={delegateMandate}
           />
         )}
         {activeView === "screening" && (
           <ScreeningView
             onScreenEntity={screenEntity}
             onScreenAddress={screenAddress}
+          />
+        )}
+        {activeView === "killswitch" && (
+          <KillSwitchView
+            killSwitches={killSwitches}
+            onActivate={activateKillSwitch}
+            onDeactivate={deactivateKillSwitch}
           />
         )}
         {activeView === "audit" && (

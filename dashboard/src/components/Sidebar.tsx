@@ -5,6 +5,7 @@ import {
   TreeStructure,
   MagnifyingGlass,
   ClockCounterClockwise,
+  Lightning,
 } from "@phosphor-icons/react";
 import {
   Tooltip,
@@ -19,6 +20,7 @@ const NAV_ITEMS: { id: ViewId; label: string; icon: React.ElementType }[] = [
   { id: "policy", label: "Policy Simulator", icon: ListChecks },
   { id: "mandates", label: "Mandates", icon: TreeStructure },
   { id: "screening", label: "Screening", icon: MagnifyingGlass },
+  { id: "killswitch", label: "Kill Switch", icon: Lightning },
   { id: "audit", label: "Audit Trail", icon: ClockCounterClockwise },
 ];
 
@@ -49,7 +51,9 @@ export function Sidebar({ activeView, onNavigate, connected }: SidebarProps) {
                   onClick={() => onNavigate(id)}
                   className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-150 ${
                     isActive
-                      ? "bg-sardis-amber/12 text-sardis-amber"
+                      ? id === "killswitch"
+                        ? "bg-sardis-red/12 text-sardis-red"
+                        : "bg-sardis-amber/12 text-sardis-amber"
                       : "text-sardis-text-muted hover:text-sardis-text-secondary hover:bg-sardis-surface-2"
                   }`}
                 >

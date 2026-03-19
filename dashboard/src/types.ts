@@ -169,4 +169,4 @@ export interface DashboardStats {
   uniqueMerchants: number;
 }
 
-export type ViewId = "overview" | "feed" | "policy" | "mandates" | "screening" | "audit";
+export type ViewId = "overview" | "feed" | "policy" | "mandates" | "screening" | "killswitch" | "audit";
