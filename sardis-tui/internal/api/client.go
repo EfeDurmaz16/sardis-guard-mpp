@@ -20,7 +20,7 @@ type Client struct {
 func NewClient() *Client {
 	base := os.Getenv("SARDIS_API_URL")
 	if base == "" {
-		base = "http://localhost:8402"
+		base = "https://sardis-guard-482463483786.us-central1.run.app"
 	}
 	return &Client{
 		BaseURL: base,

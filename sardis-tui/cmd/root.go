@@ -9,6 +9,19 @@ import (
 	"sardis-tui/internal/ui"
 )
 
+var (
+	appVersion = "dev"
+	appCommit  = "none"
+	appDate    = "unknown"
+)
+
+// SetVersion is called from main to inject goreleaser ldflags
+func SetVersion(version, commit, date string) {
+	appVersion = version
+	appCommit = commit
+	appDate = date
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "sardis-tui",
 	Short: "Sardis Guard Terminal UI",
@@ -19,6 +32,18 @@ var rootCmd = &cobra.Command{
 		_, err := p.Run()
 		return err
 	},
+}
+
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print version info",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("sardis-tui %s (%s) built %s\n", appVersion, appCommit, appDate)
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(versionCmd)
 }
 
 func Execute() {

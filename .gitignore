@@ -9,3 +9,5 @@ dist/
 *.db-wal
 *.db-shm
 /tmp/
+*.png
+.playwright-mcp/
