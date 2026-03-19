@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install Python dependencies
 RUN pip install --no-cache-dir \
     "pympp[tempo,server]" \
+    "fastapi-mpp[tempo]>=0.3.0" \
     "fastapi>=0.115.0" \
     "uvicorn>=0.34.0" \
     "httpx>=0.28.0" \
