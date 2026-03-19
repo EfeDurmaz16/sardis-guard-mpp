@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@theme {
+  --color-sardis-bg: #0a0a0f;
+  --color-sardis-surface: #12121a;
+  --color-sardis-surface-2: #1a1a26;
+  --color-sardis-border: #2a2a3a;
+  --color-sardis-text: #e0e0e8;
+  --color-sardis-text-dim: #8888a0;
+  --color-sardis-green: #22c55e;
+  --color-sardis-yellow: #eab308;
+  --color-sardis-orange: #f97316;
+  --color-sardis-red: #ef4444;
+  --color-sardis-blue: #3b82f6;
+  --color-sardis-purple: #a855f7;
+  --color-sardis-cyan: #06b6d4;
+  --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2a2a3a transparent;
+}
+
+body {
+  margin: 0;
+  background: #0a0a0f;
+  color: #e0e0e8;
+  font-family: system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Pulse animation for live indicators */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* Glow effect for alerts */
+@keyframes glow-red {
+  0%, 100% { box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.8); }
+}
+
+.glow-alert {
+  animation: glow-red 1.5s ease-in-out infinite;
+}
+
+/* Slide-in for new events */
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+/* Recharts custom */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: #2a2a3a;
+}
+
+.recharts-text {
+  fill: #8888a0;
+  font-size: 11px;
+}
