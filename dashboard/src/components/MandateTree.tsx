@@ -1,133 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import type { MandateNode } from "../types";
 
-// Hardcoded demo mandate tree for visual effect during hackathon
-// In production this would come from API
-const DEMO_TREE: MandateNode[] = [
-  {
-    mandate_id: "mnd_root_001",
-    parent_id: null,
-    principal_id: "principal_admin",
-    agent_id: "root-orchestrator",
-    max_total: "500.00",
-    max_per_tx: "50.00",
-    spent: "127.50",
-    remaining: "372.50",
-    allowed_services: [],
-    allowed_merchants: [],
-    blocked_merchants: [],
-    allowed_chains: ["tempo", "base", "ethereum"],
-    allowed_currencies: ["USDC", "pathUSD", "EURC"],
-    status: "active",
-    approval_threshold: "100",
-    delegation_depth: 0,
-    max_delegation_depth: 3,
-    created_at: Date.now() / 1000 - 3600,
-    expires_at: 0,
-    frozen_at: 0,
-    frozen_reason: "",
-    is_active: true,
-  },
-  {
-    mandate_id: "mnd_child_001",
-    parent_id: "mnd_root_001",
-    principal_id: "principal_admin",
-    agent_id: "research-agent",
-    max_total: "100.00",
-    max_per_tx: "5.00",
-    spent: "42.30",
-    remaining: "57.70",
-    allowed_services: ["exa", "stableenrich"],
-    allowed_merchants: ["stableenrich.dev", "exa.ai"],
-    blocked_merchants: [],
-    allowed_chains: ["tempo", "base"],
-    allowed_currencies: ["USDC", "pathUSD"],
-    status: "active",
-    approval_threshold: "0",
-    delegation_depth: 1,
-    max_delegation_depth: 3,
-    created_at: Date.now() / 1000 - 3000,
-    expires_at: 0,
-    frozen_at: 0,
-    frozen_reason: "",
-    is_active: true,
-  },
-  {
-    mandate_id: "mnd_child_002",
-    parent_id: "mnd_root_001",
-    principal_id: "principal_admin",
-    agent_id: "trading-agent",
-    max_total: "200.00",
-    max_per_tx: "25.00",
-    spent: "85.20",
-    remaining: "114.80",
-    allowed_services: ["dex", "bridge"],
-    allowed_merchants: [],
-    blocked_merchants: ["suspicious-dex.xyz"],
-    allowed_chains: ["tempo", "base", "ethereum"],
-    allowed_currencies: ["USDC", "EURC"],
-    status: "active",
-    approval_threshold: "50",
-    delegation_depth: 1,
-    max_delegation_depth: 3,
-    created_at: Date.now() / 1000 - 2800,
-    expires_at: 0,
-    frozen_at: 0,
-    frozen_reason: "",
-    is_active: true,
-  },
-  {
-    mandate_id: "mnd_child_003",
-    parent_id: "mnd_root_001",
-    principal_id: "principal_admin",
-    agent_id: "outreach-agent",
-    max_total: "50.00",
-    max_per_tx: "2.00",
-    spent: "50.00",
-    remaining: "0.00",
-    allowed_services: ["email", "social"],
-    allowed_merchants: [],
-    blocked_merchants: [],
-    allowed_chains: ["tempo"],
-    allowed_currencies: ["USDC", "pathUSD"],
-    status: "exhausted",
-    approval_threshold: "0",
-    delegation_depth: 1,
-    max_delegation_depth: 3,
-    created_at: Date.now() / 1000 - 2600,
-    expires_at: 0,
-    frozen_at: 0,
-    frozen_reason: "",
-    is_active: false,
-  },
-  {
-    mandate_id: "mnd_grandchild_001",
-    parent_id: "mnd_child_002",
-    principal_id: "principal_admin",
-    agent_id: "sub-trader-alpha",
-    max_total: "50.00",
-    max_per_tx: "10.00",
-    spent: "12.00",
-    remaining: "38.00",
-    allowed_services: ["dex"],
-    allowed_merchants: [],
-    blocked_merchants: ["suspicious-dex.xyz"],
-    allowed_chains: ["tempo", "base"],
-    allowed_currencies: ["USDC"],
-    status: "frozen",
-    approval_threshold: "0",
-    delegation_depth: 2,
-    max_delegation_depth: 3,
-    created_at: Date.now() / 1000 - 2000,
-    expires_at: 0,
-    frozen_at: Date.now() / 1000 - 600,
-    frozen_reason: "Anomalous trading pattern detected",
-    is_active: false,
-  },
-];
-
 interface MandateTreeProps {
-  _unused?: never;
+  mandates: MandateNode[];
 }
 
 function statusBadge(node: MandateNode) {
@@ -295,21 +170,15 @@ function MandateDetails({ node }: { node: MandateNode }) {
   );
 }
 
-export function MandateTree({}: MandateTreeProps) {
-  const [tree, setTree] = useState<MandateNode[]>([]);
+export function MandateTree({ mandates }: MandateTreeProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Use demo data; in production, fetch from API
-    setTree(DEMO_TREE);
-  }, []);
-
-  const roots = tree.filter((n) => n.parent_id === null);
+  const roots = mandates.filter((n) => n.parent_id === null);
   const getChildren = useCallback(
-    (parentId: string) => tree.filter((n) => n.parent_id === parentId),
-    [tree]
+    (parentId: string) => mandates.filter((n) => n.parent_id === parentId),
+    [mandates]
   );
-  const selectedNode = tree.find((n) => n.mandate_id === selectedId) ?? null;
+  const selectedNode = mandates.find((n) => n.mandate_id === selectedId) ?? null;
 
   const renderNode = (node: MandateNode, depth: number = 0) => {
     const children = getChildren(node.mandate_id);
@@ -341,13 +210,20 @@ export function MandateTree({}: MandateTreeProps) {
       <div className="flex items-center justify-between px-4 py-3 border-b border-sardis-border">
         <h2 className="text-sm font-semibold text-white">Mandate Tree</h2>
         <span className="text-xs font-mono text-sardis-text-dim">
-          {tree.length} nodes &middot;{" "}
-          {tree.filter((n) => n.status === "frozen").length} frozen
+          {mandates.length} nodes &middot;{" "}
+          {mandates.filter((n) => n.status === "frozen").length} frozen
         </span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
-        {roots.map((root) => renderNode(root))}
+        {mandates.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full gap-2 text-sardis-text-dim">
+            <p className="text-xs">No mandates</p>
+            <p className="text-[10px]">Create one via POST /mandates/root</p>
+          </div>
+        ) : (
+          roots.map((root) => renderNode(root))
+        )}
       </div>
 
       {selectedNode && (

@@ -135,7 +135,7 @@ export function PolicyView() {
     <div className="h-full flex flex-col p-5 gap-4 fade-in">
       <div>
         <h1 className="text-lg font-semibold text-sardis-text tracking-tight">Policy Simulator</h1>
-        <p className="text-xs text-sardis-text-muted">Test payments against the 12-check policy engine locally</p>
+        <p className="text-xs text-sardis-text-muted">Test payments against the security gate engine locally</p>
       </div>
 
       <div className="flex-1 grid grid-cols-2 gap-4 min-h-0">
@@ -244,7 +244,7 @@ export function PolicyView() {
         <Card className="bg-sardis-surface border-border overflow-hidden">
           <CardHeader className="py-3 px-4 border-b border-border">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-xs font-medium text-sardis-text-secondary">12-Check Results</CardTitle>
+              <CardTitle className="text-xs font-medium text-sardis-text-secondary">Security Gate Results</CardTitle>
               {result && (
                 <Badge variant="outline" className={`text-[10px] font-mono font-bold ${
                   result.allowed

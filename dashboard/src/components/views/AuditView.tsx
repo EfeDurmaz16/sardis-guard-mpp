@@ -155,7 +155,7 @@ export function AuditView({ events }: AuditViewProps) {
                         {event.verdict?.checks && (
                           <div className="mb-3">
                             <p className="text-[10px] font-medium text-sardis-text-muted uppercase tracking-wider mb-2">
-                              12-Check Results
+                              Security Gate Results
                             </p>
                             <div className="grid grid-cols-4 gap-1.5">
                               {event.verdict.checks.map((check) => (

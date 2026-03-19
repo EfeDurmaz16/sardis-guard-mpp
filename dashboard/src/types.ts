@@ -30,8 +30,8 @@ export interface AuditEvent {
   action?: Action;
   downstream_allowed?: boolean;
   risk_assessment?: RiskAssessment;
-  governance_result?: { allowed: boolean; checks: unknown[] };
-  aml_result?: { hit: boolean; match_type: string };
+  governance_result?: GovernanceResult;
+  aml_result?: AmlResult;
   entry_hash?: string;
   prev_hash?: string;
 }
@@ -43,8 +43,21 @@ export interface RiskAssessment {
   sanctions_score: number;
   final_score: number;
   action: Action;
-  features: Record<string, number>;
-  reasons: string[];
+  features?: Record<string, number>;
+  reasons?: string[];
+}
+
+export interface AmlResult {
+  hit: boolean;
+  match_type?: string;
+  matched_entry?: string;
+  confidence?: number;
+}
+
+export interface GovernanceResult {
+  allowed: boolean;
+  checks?: unknown[];
+  action?: string;
 }
 
 export interface MandateNode {

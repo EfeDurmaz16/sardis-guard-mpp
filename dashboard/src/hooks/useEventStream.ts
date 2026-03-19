@@ -6,32 +6,29 @@ const MAX_EVENTS = 200;
 const MAX_RISK_POINTS = 100;
 
 function resolveAction(event: AuditEvent): Action {
-  // V2 events have action directly
+  // V2 events carry action directly from the intelligence plane
   if (event.action) return event.action;
 
-  if (!event.verdict?.allowed) {
-    const failedChecks = event.verdict?.checks?.filter((c) => c.result === "FAIL") || [];
-    if (failedChecks.length >= 4) return "FREEZE_TREE";
-    if (failedChecks.length >= 2) return "HOLD";
-    if (failedChecks.some((c) => c.name === "daily_limit")) return "HOLD";
-    return "DENY";
-  }
+  // V2 risk_assessment also carries an action
+  if (event.risk_assessment?.action) return event.risk_assessment.action;
+
+  // V2 governance_result carries an action
+  if (event.governance_result?.action) return event.governance_result.action as Action;
+
+  // Legacy fallback: derive from verdict boolean
+  if (!event.verdict?.allowed) return "DENY";
   return "ALLOW";
 }
 
 function computeRiskScore(event: AuditEvent): number {
-  // V2 events have risk_assessment
+  // V2 events carry real risk scores from the intelligence plane
   if (event.risk_assessment?.final_score !== undefined) {
     return event.risk_assessment.final_score;
   }
 
-  if (!event.verdict?.allowed) {
-    const failedCount = event.verdict?.checks?.filter((c) => c.result === "FAIL").length || 0;
-    const total = event.verdict?.checks?.length || 12;
-    return Math.min(0.4 + (failedCount / total) * 0.6, 1.0);
-  }
-  const amount = parseFloat(event.amount) || 0;
-  return Math.max(0.05, Math.min(amount / 10, 0.3));
+  // Legacy fallback: simple pass/fail signal (no fabricated heuristics)
+  if (!event.verdict?.allowed) return 0.75;
+  return 0.10;
 }
 
 function formatTime(ts: number): string {

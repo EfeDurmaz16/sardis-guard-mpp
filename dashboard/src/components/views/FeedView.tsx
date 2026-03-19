@@ -41,7 +41,7 @@ export function FeedView({ events, connected }: FeedViewProps) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-sardis-text tracking-tight">Live Feed</h1>
-          <p className="text-xs text-sardis-text-muted">Real-time policy evaluations via SSE</p>
+          <p className="text-xs text-sardis-text-muted">Real-time intelligence evaluations via SSE</p>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs font-mono text-sardis-text-muted">{events.length} events</span>
@@ -58,7 +58,7 @@ export function FeedView({ events, connected }: FeedViewProps) {
           {events.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-sardis-text-muted">
               <p className="text-sm">Waiting for events...</p>
-              <p className="text-xs mt-1">Events appear here when agents make policy evaluations</p>
+              <p className="text-xs mt-1">Events appear here when agents make intelligence evaluations</p>
             </div>
           ) : (
             <div className="divide-y divide-border">
