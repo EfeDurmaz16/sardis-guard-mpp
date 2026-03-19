@@ -91,7 +91,7 @@ class _MPPServiceBase:
         t0 = time.monotonic()
 
         cmd = [
-            self.tempo_path, "request", "-t",
+            self.tempo_path, "request", "-j",
             "-X", "POST",
             "--json", json.dumps(data),
             "-m", str(self.timeout),
@@ -166,7 +166,7 @@ class _MPPServiceBase:
         t0 = time.monotonic()
 
         cmd = [
-            self.tempo_path, "request", "-t",
+            self.tempo_path, "request", "-j",
             "-X", "GET",
             "-m", str(self.timeout),
             "--retries", "2",

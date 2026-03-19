@@ -140,7 +140,7 @@ class SardisGuardClient:
         Raises:
             TempoError: If the tempo CLI fails or returns an error.
         """
-        cmd = [self.tempo_path, "request", "-t"]
+        cmd = [self.tempo_path, "request", "-j"]
         cmd.extend(["-X", method.upper()])
 
         if extra_headers:
