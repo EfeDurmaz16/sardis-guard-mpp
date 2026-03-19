@@ -31,8 +31,14 @@ from mpp.server import Mpp
 from mpp.store import MemoryStore
 
 # fastapi-mpp: decorator-based MPP integration (proof of concept)
-from mpp_fastapi import MPP as FastAPIMPP
-from mpp_fastapi.dependencies import WalletConfig
+try:
+    from mpp_fastapi import MPP as FastAPIMPP
+    from mpp_fastapi.dependencies import WalletConfig
+    _HAS_FASTAPI_MPP = True
+except ImportError:
+    _HAS_FASTAPI_MPP = False
+    FastAPIMPP = None
+    WalletConfig = None
 
 # Use mainnet by default (wallet is on mainnet), testnet if SARDIS_TESTNET=1
 USE_TESTNET = os.environ.get("SARDIS_TESTNET", "0") == "1"
@@ -84,10 +90,10 @@ mpp_server = Mpp.create(
 )
 
 # --- fastapi-mpp decorator instance (proof of concept for /evaluate) ---
-# Uses debug_mode=True for local dev (skips HTTPS + receipt crypto validation).
-# In production, set debug_mode=False and configure TEMPO_WALLET_URL + MPP_SESSION_SECRET.
-mpp_decorator = FastAPIMPP(
-    wallet_config=WalletConfig(
+mpp_decorator = None
+if _HAS_FASTAPI_MPP and FastAPIMPP and WalletConfig:
+    mpp_decorator = FastAPIMPP(
+        wallet_config=WalletConfig(
         tempo_wallet_url=WALLET_ADDRESS,
         session_secret=MPP_SECRET,
     ),
@@ -273,21 +279,29 @@ async def health():
 
 
 @app.post("/evaluate")
-@mpp_decorator.charge(amount="0.001", currency="USD", description="Sardis Guard policy evaluation")
 async def evaluate(request: Request, body: PolicyRequest):
-    """Evaluate a payment against the 12-check policy engine. Costs $0.001 per call.
+    """Evaluate a payment against the 12-check policy engine. Costs $0.001 per call."""
+    result = await mpp_server.charge(
+        authorization=request.headers.get("Authorization"),
+        amount="0.001",
+        chain_id=ACTIVE_CHAIN_ID,
+        description="Sardis Guard policy evaluation",
+    )
 
-    This endpoint uses the fastapi-mpp decorator for automatic 402 challenge/response
-    handling. The decorator:
-    - Returns 402 + WWW-Authenticate challenge if no valid payment credential is present
-    - Validates the receipt and attaches it to request.state._mpp_receipt
-    - Handles replay protection, rate limiting, and idempotency automatically
-    - Attaches Payment-Receipt header to the response automatically
-    """
-    # Extract agent ID from the validated receipt (set by @mpp_decorator.charge)
-    mpp_receipt = getattr(request.state, "_mpp_receipt", None)
-    agent_id = (mpp_receipt.source if mpp_receipt and mpp_receipt.source else "anonymous")
-    receipt_ref = mpp_receipt.id if mpp_receipt else "unknown"
+    if isinstance(result, Challenge):
+        return JSONResponse(
+            status_code=402,
+            content={
+                "type": "https://sardis.sh/errors/payment-required",
+                "title": "Payment Required",
+                "detail": "Policy evaluation costs $0.001 per call via MPP",
+            },
+            headers={"WWW-Authenticate": result.to_www_authenticate(REALM)},
+        )
+
+    credential, receipt = result
+    agent_id = credential.source or "anonymous"
+    receipt_ref = receipt.reference
 
     # Get or create agent state + mandate
     state = agent_states.setdefault(agent_id, AgentState())
