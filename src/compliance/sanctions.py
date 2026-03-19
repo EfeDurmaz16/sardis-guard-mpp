@@ -358,6 +358,81 @@ class SanctionsScreener:
         except Exception:
             return False
 
+    # ----- 0xB10C community list -----
+
+    def _merge_0xb10c_addresses(self) -> int:
+        """Merge sanctioned addresses from the 0xB10C community list.
+
+        Tries a fresh download first, then falls back to a local cache
+        file shipped with the repo.  Returns the number of *new*
+        addresses added (addresses already present are skipped so the
+        richer metadata from our fixture/OFAC download is preserved).
+        """
+        before = len(self.addresses)
+
+        # Try live download
+        extra = self._try_download_0xb10c()
+
+        # Fallback: local cache file (committed to repo / previously saved)
+        if not extra and OFAC_0xB10C_CACHE_FILE.exists():
+            try:
+                extra = json.loads(OFAC_0xB10C_CACHE_FILE.read_text())
+            except Exception:
+                extra = {}
+
+        if not extra:
+            return 0
+
+        for addr, meta in extra.items():
+            normalized = addr.strip().lower()
+            if normalized not in self.addresses:
+                self.addresses[normalized] = meta
+
+        # Persist the 0xB10C data for offline use
+        try:
+            OFAC_0xB10C_CACHE_FILE.write_text(json.dumps(extra, indent=2))
+        except Exception:
+            pass
+
+        return len(self.addresses) - before
+
+    def _try_download_0xb10c(self) -> dict[str, dict]:
+        """Download pre-parsed OFAC address lists from the 0xB10C GitHub repo.
+
+        The ``lists`` branch is updated nightly by CI from the official
+        OFAC SDN XML and contains one JSON file per asset type.
+        Returns a dict of ``{lowercase_address: metadata}`` or ``{}``.
+        """
+        merged: dict[str, dict] = {}
+        try:
+            with httpx.Client(timeout=15.0) as client:
+                for asset in _0xB10C_ASSETS:
+                    url = f"{_0xB10C_BASE}/sanctioned_addresses_{asset}.json"
+                    try:
+                        resp = client.get(url)
+                        resp.raise_for_status()
+                        addrs: list[str] = resp.json()
+                        for addr in addrs:
+                            normalized = addr.strip().lower()
+                            if normalized not in merged:
+                                merged[normalized] = {
+                                    "entity": "OFAC SDN Entry",
+                                    "list": "OFAC SDN",
+                                    "program": "SDN",
+                                    "chains": [asset],
+                                    "source": "0xB10C/ofac-sanctioned-digital-currency-addresses",
+                                }
+                            else:
+                                chains = merged[normalized].get("chains", [])
+                                if asset not in chains:
+                                    chains.append(asset)
+                    except Exception:
+                        continue  # Best-effort per asset
+        except Exception:
+            pass
+
+        return merged
+
     def _try_load_cache(self) -> bool:
         """Load from local JSON cache."""
         try:
@@ -431,7 +506,11 @@ class SanctionsScreener:
     def screen_entity(self, name: str) -> SanctionsResult:
         """Screen an entity name against the OFAC sanctions list.
 
-        Uses substring matching and simple edit-distance for fuzzy matching.
+        Matching pipeline (short-circuits on first confident hit):
+          1. Exact name match
+          2. Substring containment + token overlap
+          3. difflib.SequenceMatcher ratio (handles typos, word reordering)
+          4. Levenshtein edit distance for short names
         """
         if not name:
             return SanctionsResult(hit=False, match_type="none")
@@ -488,7 +567,30 @@ class SanctionsScreener:
                 program=meta.get("program", ""),
             )
 
-        # 3. Edit distance for short names (Levenshtein-like)
+        # 3. SequenceMatcher — better than Levenshtein for transpositions,
+        #    word reordering, and partial matches (e.g. "Garantex Europe"
+        #    vs "Garantex Europe OU").  O(n*m) but our name list is small.
+        for sanctioned_name, meta in self.names.items():
+            ratio = difflib.SequenceMatcher(
+                None, query, sanctioned_name
+            ).ratio()
+            if ratio >= 0.70 and ratio > best_confidence:
+                best_confidence = ratio
+                best_match = sanctioned_name
+
+        if best_match and best_confidence >= 0.70:
+            meta = self.names[best_match]
+            return SanctionsResult(
+                hit=True,
+                match_type="fuzzy_name",
+                matched_entry=best_match,
+                list_source=meta.get("list", "OFAC SDN"),
+                confidence=round(best_confidence, 3),
+                program=meta.get("program", ""),
+                details={"method": "sequence_matcher"},
+            )
+
+        # 4. Edit distance for short names (Levenshtein-like)
         if len(query) <= 30:
             for sanctioned_name, meta in self.names.items():
                 dist = _levenshtein(query, sanctioned_name)
@@ -521,11 +623,17 @@ class SanctionsScreener:
 
     @property
     def stats(self) -> dict:
+        # Count how many came from 0xB10C vs fixture/OFAC
+        b10c_count = sum(
+            1 for m in self.addresses.values()
+            if m.get("source") == "0xB10C/ofac-sanctioned-digital-currency-addresses"
+        )
         return {
             "address_count": len(self.addresses),
             "name_count": len(self.names),
             "loaded_from": self._loaded_from,
             "last_updated": self._last_updated,
+            "community_addresses_0xb10c": b10c_count,
         }
 
 

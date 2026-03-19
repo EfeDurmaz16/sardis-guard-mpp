@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { AuditEvent, RiskDataPoint, DashboardStats, Action } from "../types";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8402";
+const API_BASE = import.meta.env.VITE_API_URL || "https://sardis-guard-482463483786.us-central1.run.app";
 const MAX_EVENTS = 200;
 const MAX_RISK_POINTS = 100;
 

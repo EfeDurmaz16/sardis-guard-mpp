@@ -8,7 +8,7 @@ import type {
   ScreeningResult,
 } from "../types";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8402";
+const API_BASE = import.meta.env.VITE_API_URL || "https://sardis-guard-482463483786.us-central1.run.app";
 
 export function useApi() {
   const [health, setHealth] = useState<HealthData | null>(null);

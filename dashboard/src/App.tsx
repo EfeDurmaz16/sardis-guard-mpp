@@ -1,61 +1,83 @@
-import { Header } from "./components/Header";
-import { RiskGaugePanel } from "./components/RiskGaugePanel";
-import { LiveEventFeed } from "./components/LiveEventFeed";
-import { RiskTimeline } from "./components/RiskTimeline";
-import { MandateTree } from "./components/MandateTree";
-import { AlertBanner } from "./components/AlertBanner";
+import { useState } from "react";
+import { Sidebar } from "./components/Sidebar";
+import { OverviewView } from "./components/views/OverviewView";
+import { FeedView } from "./components/views/FeedView";
+import { PolicyView } from "./components/views/PolicyView";
+import { MandatesView } from "./components/views/MandatesView";
+import { ScreeningView } from "./components/views/ScreeningView";
+import { AuditView } from "./components/views/AuditView";
 import { useEventStream } from "./hooks/useEventStream";
+import { useApi } from "./hooks/useApi";
+import type { ViewId } from "./types";
 
 function App() {
-  const { events, riskData, stats, connected, alerts, dismissAlert } =
-    useEventStream();
+  const [activeView, setActiveView] = useState<ViewId>("overview");
+  const { events, riskData, stats, connected } = useEventStream();
+  const {
+    health,
+    summary,
+    serviceInfo,
+    mandates,
+    killSwitches,
+    screenEntity,
+    screenAddress,
+    freezeMandate,
+    resumeMandate,
+  } = useApi();
+
+  // Merge SSE stats with API stats
+  const mergedStats = {
+    ...stats,
+    agentsTracked: summary?.active_agents ?? health?.agents_tracked ?? stats.agentsTracked,
+    activeMandates: summary?.mandates_active ?? health?.mandates_active ?? stats.activeMandates,
+    frozenMandates: summary?.mandates_frozen ?? stats.frozenMandates,
+    totalVolume: summary?.total_volume ?? stats.totalVolume,
+    uniqueMerchants: summary?.unique_merchants ?? stats.uniqueMerchants,
+  };
 
   return (
-    <div className="h-screen flex flex-col bg-sardis-bg overflow-hidden">
-      {/* Header */}
-      <Header stats={stats} connected={connected} />
+    <div className="h-screen flex bg-sardis-bg overflow-hidden">
+      <Sidebar
+        activeView={activeView}
+        onNavigate={setActiveView}
+        connected={connected}
+      />
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col p-4 gap-4 min-h-0 overflow-hidden">
-        {/* Alert Banner */}
-        <AlertBanner alerts={alerts} onDismiss={dismissAlert} />
-
-        {/* Top row: Risk Gauge Cards */}
-        <RiskGaugePanel stats={stats} />
-
-        {/* Main grid: Feed + Charts + Mandates */}
-        <div className="flex-1 grid grid-cols-12 gap-4 min-h-0">
-          {/* Left column: Live Event Feed */}
-          <div className="col-span-4 min-h-0">
-            <LiveEventFeed events={events} />
-          </div>
-
-          {/* Right column: Risk Timeline + Mandate Tree */}
-          <div className="col-span-8 flex flex-col gap-4 min-h-0">
-            {/* Risk Timeline */}
-            <div className="flex-1 min-h-0">
-              <RiskTimeline data={riskData} />
-            </div>
-
-            {/* Mandate Tree */}
-            <div className="flex-1 min-h-0">
-              <MandateTree />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <footer className="border-t border-sardis-border bg-sardis-surface px-6 py-2 flex items-center justify-between text-[10px] text-sardis-text-dim font-mono">
-        <span>
-          Sardis Guard v0.1.0 &middot; MPP Policy Firewall &middot; The
-          Synthesis Hackathon 2026
-        </span>
-        <span>
-          API: http://localhost:8402 &middot; Stream: SSE &middot; Paradigm
-          Demo
-        </span>
-      </footer>
+      <main className="flex-1 min-w-0 overflow-hidden">
+        {activeView === "overview" && (
+          <OverviewView
+            summary={summary}
+            stats={mergedStats}
+            serviceInfo={serviceInfo}
+            killSwitches={killSwitches}
+            events={events}
+            riskData={riskData}
+            connected={connected}
+          />
+        )}
+        {activeView === "feed" && (
+          <FeedView events={events} connected={connected} />
+        )}
+        {activeView === "policy" && (
+          <PolicyView />
+        )}
+        {activeView === "mandates" && (
+          <MandatesView
+            mandates={mandates}
+            onFreeze={freezeMandate}
+            onResume={resumeMandate}
+          />
+        )}
+        {activeView === "screening" && (
+          <ScreeningView
+            onScreenEntity={screenEntity}
+            onScreenAddress={screenAddress}
+          />
+        )}
+        {activeView === "audit" && (
+          <AuditView events={events} />
+        )}
+      </main>
     </div>
   );
 }
