@@ -169,9 +169,6 @@ func renderPolicyForm(ps *PolicyState, width, height int) string {
 		lines = append(lines, "")
 	}
 
-	lines = append(lines, "")
-	lines = append(lines, "  "+t.TextMuted.Render("Enter: submit   Tab: next field   Esc: cancel"))
-
 	content := strings.Join(lines, "\n")
 	return lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).

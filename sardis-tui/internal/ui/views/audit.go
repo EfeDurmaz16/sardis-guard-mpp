@@ -178,9 +178,6 @@ func RenderAudit(as *AuditState, width, height int) string {
 		}
 	}
 
-	lines = append(lines, "")
-	lines = append(lines, "  "+t.TextMuted.Render("[E] Export evidence   [/] Filter   [Enter] Detail"))
-
 	content := strings.Join(lines, "\n")
 	return lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).

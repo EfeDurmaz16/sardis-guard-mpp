@@ -450,8 +450,8 @@ func (a *App) View() string {
 	// Header
 	header := RenderHeader(a.activeTab, a.connected, a.width)
 
-	// Content area
-	contentHeight := a.height - 6
+	// Content area (header=3 + helpbar=1 + statusbar=3 + gaps=2)
+	contentHeight := a.height - 9
 	var content string
 
 	switch a.activeTab {
@@ -469,10 +469,13 @@ func (a *App) View() string {
 		content = views.RenderAudit(a.auditState, a.width, contentHeight)
 	}
 
+	// Context help bar
+	helpbar := RenderHelpBar(a.activeTab, a.width)
+
 	// Status bar
 	statusbar := RenderStatusBar(a.client.BaseURL, a.summary, a.eventCount, a.width)
 
-	return header + "\n" + content + "\n" + statusbar
+	return header + "\n" + content + "\n" + helpbar + "\n" + statusbar
 }
 
 func (a *App) renderHelp() string {

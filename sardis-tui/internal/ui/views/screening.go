@@ -119,9 +119,6 @@ func RenderScreening(ss *ScreeningState, width, height int) string {
 		}
 	}
 
-	// Hints
-	sections = append(sections, "  "+t.TextMuted.Render("Enter: screen   Tab: switch mode   Esc: clear"))
-
 	content := strings.Join(sections, "\n")
 	return lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).

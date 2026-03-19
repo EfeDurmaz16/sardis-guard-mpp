@@ -108,9 +108,6 @@ func renderMandateTree(ms *MandateState, width, height int) string {
 		}
 	}
 
-	lines = append(lines, "")
-	lines = append(lines, "  "+t.TextMuted.Render("[N] New root   [Enter] Detail   [F] Freeze   [R] Resume"))
-
 	content := strings.Join(lines, "\n")
 	return lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
@@ -213,9 +210,6 @@ func renderMandateDetail(m api.Mandate, width int) string {
 		value := t.TextPrimary.Render(f.Value)
 		lines = append(lines, "  "+label+value)
 	}
-
-	lines = append(lines, "")
-	lines = append(lines, "  "+t.TextMuted.Render("[F] Freeze   [D] Delegate   [R] Resume   [Esc] Back"))
 
 	content := strings.Join(lines, "\n")
 	return lipgloss.NewStyle().
