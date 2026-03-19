@@ -9,25 +9,27 @@ import (
 )
 
 // RenderStatusBar renders the bottom status bar
-func RenderStatusBar(apiURL string, summary *api.DashboardSummary, eventCount int, width int) string {
+func RenderStatusBar(summary *api.DashboardSummary, eventCount int, width int) string {
 	sep := lipgloss.NewStyle().Foreground(t.ColorText30).Render(" │ ")
 
-	url := lipgloss.NewStyle().Foreground(t.ColorText50).Render(apiURL)
+	logo := lipgloss.NewStyle().Foreground(t.ColorText30).Render("sardis guard")
 
 	events := lipgloss.NewStyle().Foreground(t.ColorText70).Render(fmt.Sprintf("%d events", eventCount))
 
-	var agents, volume string
+	var agents, volume, merchants string
 	if summary != nil {
 		agents = lipgloss.NewStyle().Foreground(t.ColorText70).Render(fmt.Sprintf("%d agents", summary.ActiveAgents))
-		volume = lipgloss.NewStyle().Foreground(t.ColorAmber).Bold(true).Render(fmt.Sprintf("$%.2f", summary.TotalVolume))
+		volume = lipgloss.NewStyle().Foreground(t.ColorAmber).Bold(true).Render(fmt.Sprintf("$%.2f volume", summary.TotalVolume))
+		merchants = lipgloss.NewStyle().Foreground(t.ColorText70).Render(fmt.Sprintf("%d merchants", summary.UniqueMerchants))
 	} else {
 		agents = lipgloss.NewStyle().Foreground(t.ColorText30).Render("-- agents")
 		volume = lipgloss.NewStyle().Foreground(t.ColorText30).Render("$--")
+		merchants = lipgloss.NewStyle().Foreground(t.ColorText30).Render("-- merchants")
 	}
 
 	help := lipgloss.NewStyle().Foreground(t.ColorText30).Render("? help")
 
-	left := url + sep + events + sep + agents + sep + volume
+	left := logo + sep + events + sep + agents + sep + merchants + sep + volume
 	leftWidth := lipgloss.Width(left)
 	helpWidth := lipgloss.Width(help)
 	gap := width - leftWidth - helpWidth - 4

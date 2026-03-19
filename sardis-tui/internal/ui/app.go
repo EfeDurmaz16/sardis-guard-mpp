@@ -268,11 +268,40 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Global keys that always work
+	// Global keys that always work — even in text input
 	switch key {
 	case "ctrl+c":
 		a.stream.Stop()
 		return a, tea.Quit
+	case "esc":
+		// Esc always returns to overview (escape from any view)
+		if inTextInput {
+			// Let the view handle esc first for internal state
+			switch a.activeTab {
+			case TabPolicy:
+				if a.policyState.Submitted {
+					a.policyState.Submitted = false
+					a.policyState.Result = nil
+					a.policyState.Error = ""
+					return a, nil
+				}
+				// Not submitted — switch to overview
+				a.activeTab = TabOverview
+				return a, nil
+			case TabScreening:
+				if a.screenState.Input != "" {
+					a.screenState.Input = ""
+					return a, nil
+				}
+				a.activeTab = TabOverview
+				return a, nil
+			case TabAudit:
+				if a.auditState.FilterActive {
+					a.auditState.FilterActive = false
+					return a, nil
+				}
+			}
+		}
 	}
 
 	// Global keys that only work outside text input
@@ -364,8 +393,8 @@ func (a *App) evaluatePolicy() tea.Cmd {
 				"  Run this command:\n"+
 				"  tempo request -t -X POST \\\n"+
 				"    --json '{\"amount\":\"%s\",\"merchant\":\"%s\",\"currency\":\"%s\",\"network\":\"%s\"}' \\\n"+
-				"    %s/simulate",
-			vals["Amount"], vals["Merchant"], vals["Currency"], vals["Network"], a.client.BaseURL)
+				"    <server>/simulate",
+			vals["Amount"], vals["Merchant"], vals["Currency"], vals["Network"])
 		return nil
 	}
 }
@@ -473,7 +502,7 @@ func (a *App) View() string {
 	helpbar := RenderHelpBar(a.activeTab, a.width)
 
 	// Status bar
-	statusbar := RenderStatusBar(a.client.BaseURL, a.summary, a.eventCount, a.width)
+	statusbar := RenderStatusBar(a.summary, a.eventCount, a.width)
 
 	return header + "\n" + content + "\n" + helpbar + "\n" + statusbar
 }
