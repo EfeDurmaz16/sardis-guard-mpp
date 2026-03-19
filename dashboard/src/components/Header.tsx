@@ -1,3 +1,4 @@
+import { useWallet } from "../hooks/useWallet";
 import type { DashboardStats } from "../types";
 
 interface HeaderProps {
@@ -5,7 +6,13 @@ interface HeaderProps {
   connected: boolean;
 }
 
+function truncateAddress(address: string): string {
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
 export function Header({ stats, connected }: HeaderProps) {
+  const { address, isConnected, signUp, signIn, signOut } = useWallet();
+
   return (
     <header className="border-b border-sardis-border bg-sardis-surface px-6 py-4 flex items-center justify-between">
       <div className="flex items-center gap-4">
@@ -73,6 +80,40 @@ export function Header({ stats, connected }: HeaderProps) {
             {stats.activeMandates}
           </span>
         </div>
+
+        {/* Wallet section */}
+        <div className="w-px h-5 bg-sardis-border" />
+        {isConnected && address ? (
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sardis-surface-2 border border-sardis-amber/20">
+              <span className="w-2 h-2 rounded-full bg-sardis-amber" />
+              <span className="font-mono text-xs text-sardis-amber font-medium">
+                {truncateAddress(address)}
+              </span>
+            </div>
+            <button
+              onClick={signOut}
+              className="text-xs font-mono text-sardis-text-muted hover:text-sardis-red transition-colors"
+            >
+              Sign out
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={signUp}
+              className="px-3 py-1.5 rounded-lg text-xs font-mono font-medium bg-sardis-amber text-sardis-bg hover:bg-sardis-amber/90 transition-colors"
+            >
+              Sign up
+            </button>
+            <button
+              onClick={signIn}
+              className="px-3 py-1.5 rounded-lg text-xs font-mono font-medium border border-sardis-amber/30 text-sardis-amber hover:bg-sardis-amber/10 transition-colors"
+            >
+              Sign in
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

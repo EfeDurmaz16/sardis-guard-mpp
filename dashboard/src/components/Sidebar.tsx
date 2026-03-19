@@ -49,7 +49,7 @@ export function Sidebar({ activeView, onNavigate, connected }: SidebarProps) {
               <TooltipTrigger asChild>
                 <button
                   onClick={() => onNavigate(id)}
-                  className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-150 ${
+                  className={`w-11 h-11 rounded-lg flex items-center justify-center transition-all duration-150 ${
                     isActive
                       ? id === "killswitch"
                         ? "bg-sardis-red/12 text-sardis-red"

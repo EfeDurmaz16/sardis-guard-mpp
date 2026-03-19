@@ -47,7 +47,7 @@ function StatCard({
         <p className="text-[11px] font-medium text-sardis-text-muted uppercase tracking-wider mb-2">
           {label}
         </p>
-        <p className={`text-2xl font-bold font-mono ${accent ? "text-sardis-amber" : "text-sardis-text"}`}>
+        <p className={`text-2xl font-bold font-mono ${accent && value !== "$0.00" && value !== 0 ? "text-sardis-amber" : "text-sardis-text"}`}>
           {typeof value === "number" ? value.toLocaleString() : value}
         </p>
         {sub && <p className="text-[11px] text-sardis-text-muted mt-1">{sub}</p>}
@@ -181,7 +181,47 @@ export function OverviewView({
         />
       </div>
 
-      {/* Main content: 3 columns */}
+      {/* Main content */}
+      {/* Onboarding: show when no live events in current session */}
+      {events.length === 0 && (
+        <Card className="bg-sardis-surface border-border border-sardis-amber/10">
+          <CardContent className="p-5">
+            <div className="flex items-start gap-5">
+              <div className="w-10 h-10 rounded-lg bg-sardis-amber/10 flex items-center justify-center shrink-0 mt-0.5">
+                <span className="text-sardis-amber text-lg font-bold font-mono">?</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold text-sardis-text mb-1">Getting Started</h3>
+                <p className="text-xs text-sardis-text-muted mb-3 leading-relaxed">
+                  Sardis Guard evaluates AI agent payments through a 12-check policy pipeline.
+                  Send your first evaluation to see data flow through the dashboard.
+                </p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded-lg bg-sardis-surface-2 border border-border px-3 py-2.5">
+                    <p className="text-[10px] font-medium text-sardis-amber uppercase tracking-wider mb-1">1. Evaluate</p>
+                    <p className="text-[10px] text-sardis-text-muted font-mono leading-relaxed">
+                      POST /evaluate with amount, merchant, currency
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-sardis-surface-2 border border-border px-3 py-2.5">
+                    <p className="text-[10px] font-medium text-sardis-amber uppercase tracking-wider mb-1">2. Create Mandate</p>
+                    <p className="text-[10px] text-sardis-text-muted font-mono leading-relaxed">
+                      POST /mandates/root to set spending limits for an agent
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-sardis-surface-2 border border-border px-3 py-2.5">
+                    <p className="text-[10px] font-medium text-sardis-amber uppercase tracking-wider mb-1">3. Screen</p>
+                    <p className="text-[10px] text-sardis-text-muted font-mono leading-relaxed">
+                      POST /screen/entity to check OFAC sanctions lists
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex-1 grid grid-cols-12 gap-3 min-h-0">
         {/* Left: Recent activity */}
         <div className="col-span-4 min-h-0">
@@ -307,19 +347,28 @@ export function OverviewView({
           </Card>
         </div>
 
-        {/* Right: Actions + Modules + Risk */}
-        <div className="col-span-3 flex flex-col gap-3 min-h-0">
-          {/* Action breakdown */}
+        {/* Right: Actions + Modules */}
+        <div className="col-span-3 flex flex-col gap-3 min-h-0 overflow-hidden">
+          {/* Action breakdown with avg risk in header */}
           <Card className="bg-sardis-surface border-border">
             <CardHeader className="py-3 px-4 border-b border-border">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-xs font-medium text-sardis-text-secondary">
                   Actions
                 </CardTitle>
-                <span className="text-[10px] font-mono text-sardis-text-muted">{totalActions} total</span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-mono font-bold ${
+                    stats.avgRiskScore < 0.45 ? "text-sardis-green" :
+                    stats.avgRiskScore < 0.70 ? "text-sardis-amber" :
+                    "text-sardis-red"
+                  }`}>
+                    {stats.totalEvents > 0 ? `risk ${stats.avgRiskScore.toFixed(2)}` : ""}
+                  </span>
+                  <span className="text-[10px] font-mono text-sardis-text-muted">{totalActions} total</span>
+                </div>
               </div>
             </CardHeader>
-            <CardContent className="p-4 space-y-2.5">
+            <CardContent className="p-4 space-y-2">
               <ActionBar label="ALLOW" count={stats.actions.ALLOW} total={totalActions} color="bg-sardis-green" />
               <ActionBar label="FLAG" count={stats.actions.FLAG} total={totalActions} color="bg-sardis-amber" />
               <ActionBar label="HOLD" count={stats.actions.HOLD} total={totalActions} color="bg-sardis-amber" />
@@ -328,37 +377,14 @@ export function OverviewView({
             </CardContent>
           </Card>
 
-          {/* Average risk score — compact inline */}
-          <Card className="bg-sardis-surface border-border">
-            <CardContent className="px-4 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-[11px] font-medium text-sardis-text-muted uppercase tracking-wider">Avg Risk</span>
-                <span className={`text-lg font-bold font-mono ${
-                  stats.avgRiskScore < 0.45 ? "text-sardis-green" :
-                  stats.avgRiskScore < 0.70 ? "text-sardis-amber" :
-                  "text-sardis-red"
-                }`}>
-                  {stats.totalEvents > 0 ? stats.avgRiskScore.toFixed(3) : "—"}
-                </span>
-              </div>
-              <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
-                stats.avgRiskScore < 0.45 ? "bg-sardis-green-glow text-sardis-green" :
-                stats.avgRiskScore < 0.70 ? "bg-sardis-amber-glow text-sardis-amber" :
-                "bg-sardis-red-glow text-sardis-red"
-              }`}>
-                {stats.totalEvents > 0 ? (stats.avgRiskScore < 0.45 ? "LOW" : stats.avgRiskScore < 0.70 ? "ELEVATED" : "HIGH") : "N/A"}
-              </span>
-            </CardContent>
-          </Card>
-
           {/* System modules */}
           <Card className="bg-sardis-surface border-border flex-1 min-h-0">
-            <CardHeader className="py-3 px-4 border-b border-border">
+            <CardHeader className="py-2.5 px-4 border-b border-border">
               <CardTitle className="text-xs font-medium text-sardis-text-secondary">
                 System Modules
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-4 space-y-2.5">
+            <CardContent className="p-3 space-y-2">
               {serviceInfo?.modules ? (
                 Object.entries(serviceInfo.modules).map(([name, active]) => (
                   <div key={name} className="flex items-center justify-between">
