@@ -297,6 +297,9 @@ class SwarmOrchestrator:
                 meta = self.registry.get_or_unknown(step.service_id)
                 merchant = meta.base_url or step.service_id
 
+                # Extract destination_address from step params if present
+                destination_address = step.params.get("address", "")
+
                 verdict = self.guard.evaluate(
                     amount=str(step.expected_cost),
                     merchant=merchant,
@@ -304,6 +307,8 @@ class SwarmOrchestrator:
                     network="tempo",
                     category=meta.category.value if hasattr(meta.category, "value") else "general",
                     memo=step.description,
+                    service_id=step.service_id,
+                    destination_address=destination_address,
                 )
                 guard_verdict = {
                     "allowed": verdict.allowed,
@@ -316,9 +321,9 @@ class SwarmOrchestrator:
                     guard_error = verdict.summary
             except TempoError as e:
                 guard_error = f"Guard evaluation failed: {e}"
-                # In production, fail-closed; for demo, allow to proceed
-                guard_allowed = True
-                logger.warning("Guard eval failed, proceeding anyway: %s", e)
+                # FAIL-CLOSED: if Guard is unreachable, deny the action
+                guard_allowed = False
+                logger.error("Guard eval failed — DENIED (fail-closed): %s", e)
 
         # If Guard denied, stop here
         if not guard_allowed:
