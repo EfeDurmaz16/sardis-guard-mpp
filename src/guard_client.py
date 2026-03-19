@@ -242,8 +242,20 @@ class SardisGuardClient:
         network: str = "tempo",
         category: str = "general",
         memo: str | None = None,
+        agent_id: str = "",
+        principal_id: str = "",
+        mandate_id: str = "",
+        service_id: str = "",
+        service_path: str = "",
+        destination_address: str = "",
+        session_hash: str = "",
+        idempotency_key: str = "",
+        nonce: int = -1,
     ) -> GuardVerdict:
-        """Evaluate a payment against Sardis Guard's 12-check policy engine.
+        """Evaluate a payment against the V2 intelligence pipeline.
+
+        Uses /evaluate/v2 which includes sanctions screening, risk
+        assessment, mandate governance, and full audit trail.
 
         Args:
             amount: Payment amount as string (e.g. "0.01").
@@ -252,6 +264,15 @@ class SardisGuardClient:
             network: Blockchain network (default: tempo).
             category: Spending category (default: general).
             memo: Optional memo/description.
+            agent_id: Agent identifier for mandate lookup.
+            principal_id: Principal who issued the mandate.
+            mandate_id: Mandate ID for governance checks.
+            service_id: Target service identifier.
+            service_path: API path on the target service.
+            destination_address: Wallet address for sanctions screening.
+            session_hash: Anti-relay session binding hash.
+            idempotency_key: Dedup key for replay protection.
+            nonce: Monotonic nonce for ordering.
 
         Returns:
             GuardVerdict with the policy decision.
@@ -266,15 +287,24 @@ class SardisGuardClient:
             "currency": currency,
             "network": network,
             "category": category,
+            "agent_id": agent_id,
+            "principal_id": principal_id,
+            "mandate_id": mandate_id,
+            "service_id": service_id,
+            "service_path": service_path,
+            "destination_address": destination_address,
+            "session_hash": session_hash,
+            "idempotency_key": idempotency_key,
+            "nonce": nonce,
         }
         if memo:
             payload["memo"] = memo
 
-        logger.info("Evaluating: $%s to %s", amount, merchant)
+        logger.info("Evaluating (V2): $%s to %s", amount, merchant)
 
         response = self._tempo_request(
             method="POST",
-            url=f"{self.guard_url}/evaluate",
+            url=f"{self.guard_url}/evaluate/v2",
             data=payload,
         )
 
