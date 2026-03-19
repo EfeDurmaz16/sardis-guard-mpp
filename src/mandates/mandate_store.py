@@ -225,20 +225,21 @@ class MandateStore:
         ancestor in the delegation chain.
         """
         amount = Decimal(str(amount))
-        node = self._mandates.get(mandate_id)
-        if node is None:
-            raise ValueError(f"Mandate {mandate_id} not found")
+        with self._lock:
+            node = self._mandates.get(mandate_id)
+            if node is None:
+                raise ValueError(f"Mandate {mandate_id} not found")
 
-        # Walk up the chain and record on each ancestor
-        current: MandateNode | None = node
-        while current is not None:
-            current.record_spend(amount)
-            if current.remaining <= 0:
-                current.status = MandateStatus.EXHAUSTED
-            if current.parent_id:
-                current = self._mandates.get(current.parent_id)
-            else:
-                current = None
+            # Walk up the chain and record on each ancestor
+            current: MandateNode | None = node
+            while current is not None:
+                current.record_spend(amount)
+                if current.remaining <= 0:
+                    current.status = MandateStatus.EXHAUSTED
+                if current.parent_id:
+                    current = self._mandates.get(current.parent_id)
+                else:
+                    current = None
 
     # ------------------------------------------------------------------
     # Freeze / Resume
@@ -246,38 +247,49 @@ class MandateStore:
 
     def freeze(self, mandate_id: str, reason: str = "") -> None:
         """Freeze a single mandate."""
-        node = self._mandates.get(mandate_id)
-        if node is None:
-            raise ValueError(f"Mandate {mandate_id} not found")
-        node.freeze(reason)
+        with self._lock:
+            node = self._mandates.get(mandate_id)
+            if node is None:
+                raise ValueError(f"Mandate {mandate_id} not found")
+            node.freeze(reason)
 
-    def freeze_children(self, mandate_id: str, reason: str = "") -> None:
-        """Freeze all children of a mandate recursively (not the mandate itself)."""
+    def _freeze_children_locked(self, mandate_id: str, reason: str = "") -> None:
+        """Freeze all children recursively (caller must hold self._lock)."""
         children = self.get_children(mandate_id)
         for child in children:
             child.freeze(reason)
-            self.freeze_children(child.mandate_id, reason)
+            self._freeze_children_locked(child.mandate_id, reason)
+
+    def freeze_children(self, mandate_id: str, reason: str = "") -> None:
+        """Freeze all children of a mandate recursively (not the mandate itself)."""
+        with self._lock:
+            self._freeze_children_locked(mandate_id, reason)
 
     def freeze_tree(self, mandate_id: str, reason: str = "") -> None:
         """Freeze a mandate and all its descendants."""
-        self.freeze(mandate_id, reason)
-        self.freeze_children(mandate_id, reason)
+        with self._lock:
+            node = self._mandates.get(mandate_id)
+            if node is None:
+                raise ValueError(f"Mandate {mandate_id} not found")
+            node.freeze(reason)
+            self._freeze_children_locked(mandate_id, reason)
 
     def resume(self, mandate_id: str) -> None:
         """Resume a frozen mandate. Only succeeds if parent is active."""
-        node = self._mandates.get(mandate_id)
-        if node is None:
-            raise ValueError(f"Mandate {mandate_id} not found")
+        with self._lock:
+            node = self._mandates.get(mandate_id)
+            if node is None:
+                raise ValueError(f"Mandate {mandate_id} not found")
 
-        # Check parent is active (if parent exists)
-        if node.parent_id:
-            parent = self._mandates.get(node.parent_id)
-            if parent is not None and not parent.is_active:
-                raise ValueError(
-                    f"Cannot resume: parent {node.parent_id} is {parent.status.value}"
-                )
+            # Check parent is active (if parent exists)
+            if node.parent_id:
+                parent = self._mandates.get(node.parent_id)
+                if parent is not None and not parent.is_active:
+                    raise ValueError(
+                        f"Cannot resume: parent {node.parent_id} is {parent.status.value}"
+                    )
 
-        node.resume()
+            node.resume()
 
     # ------------------------------------------------------------------
     # Internal helpers
