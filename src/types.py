@@ -33,6 +33,33 @@ class MandateStatus(str, Enum):
     EXHAUSTED = "exhausted"
 
 
+class TrustTier(str, Enum):
+    """Agent trust tiers with preset spending limits.
+
+    From Sardis Protocol Spec v1.1:
+      UNTRUSTED:  $10/tx,     $25/day    — new/unknown agents
+      LOW:        $50/tx,    $100/day    — basic KYA
+      MEDIUM:    $500/tx,  $1,000/day   — verified KYA
+      HIGH:    $5,000/tx, $10,000/day   — attested KYA
+      SOVEREIGN:$50,000/tx (unlimited)  — full sovereign agent
+    """
+    UNTRUSTED = "untrusted"
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    SOVEREIGN = "sovereign"
+
+
+# Preset limits per trust tier (from Sardis production)
+TRUST_TIER_LIMITS: dict[TrustTier, dict] = {
+    TrustTier.UNTRUSTED: {"per_tx": Decimal("10"), "daily": Decimal("25"), "total": Decimal("100")},
+    TrustTier.LOW: {"per_tx": Decimal("50"), "daily": Decimal("100"), "total": Decimal("5000")},
+    TrustTier.MEDIUM: {"per_tx": Decimal("500"), "daily": Decimal("1000"), "total": Decimal("50000")},
+    TrustTier.HIGH: {"per_tx": Decimal("5000"), "daily": Decimal("10000"), "total": Decimal("500000")},
+    TrustTier.SOVEREIGN: {"per_tx": Decimal("50000"), "daily": Decimal("999999999"), "total": Decimal("999999999")},
+}
+
+
 # --- PaymentIntentEvent ---
 
 @dataclass
@@ -142,6 +169,7 @@ class MandateNode:
     allowed_categories: list[str] = field(default_factory=list)
 
     # Governance
+    trust_tier: TrustTier = TrustTier.LOW
     status: MandateStatus = MandateStatus.ACTIVE
     approval_threshold: Decimal = Decimal("0")  # above this, needs approval
     delegation_depth: int = 0
