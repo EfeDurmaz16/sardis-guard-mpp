@@ -24,12 +24,27 @@ export interface AuditEvent {
   category: string;
   verdict: Verdict;
   type: "evaluate" | "simulate";
+  // V2 fields
+  event_id?: string;
+  agent_id?: string;
+  action?: Action;
+  downstream_allowed?: boolean;
+  risk_assessment?: RiskAssessment;
+  governance_result?: { allowed: boolean; checks: unknown[] };
+  aml_result?: { hit: boolean; match_type: string };
+  entry_hash?: string;
+  prev_hash?: string;
 }
 
-export interface HealthData {
-  status: string;
-  agents_tracked: number;
-  mandates_active: number;
+export interface RiskAssessment {
+  ml_score: number;
+  sequence_score: number;
+  correlation_score: number;
+  sanctions_score: number;
+  final_score: number;
+  action: Action;
+  features: Record<string, number>;
+  reasons: string[];
 }
 
 export interface MandateNode {
@@ -57,6 +72,63 @@ export interface MandateNode {
   is_active: boolean;
 }
 
+export interface DashboardSummary {
+  total_events: number;
+  active_agents: number;
+  total_volume: number;
+  unique_merchants: number;
+  denied_count: number;
+  flagged_count: number;
+  held_count: number;
+  frozen_count: number;
+  mandates_active: number;
+  mandates_frozen: number;
+  mandates_total: number;
+}
+
+export interface ServiceInfo {
+  service: string;
+  version: string;
+  modules: Record<string, boolean>;
+  endpoints: Record<string, string>;
+}
+
+export interface HealthData {
+  status: string;
+  agents_tracked: number;
+  mandates_active: number;
+}
+
+export interface KillSwitchState {
+  scope: string;
+  target: string;
+  reason: string;
+  activated_at: number;
+  auto_lift_at: number | null;
+  activated_by: string;
+}
+
+export interface ScreeningResult {
+  entity?: string;
+  address?: string;
+  hit: boolean;
+  match_type: string;
+  matched_entry: string;
+  list_source: string;
+  confidence: number;
+}
+
+export interface EvidencePack {
+  session_id: string;
+  generated_at: number;
+  event_count: number;
+  chain_valid: boolean;
+  first_hash: string;
+  last_hash: string;
+  events: unknown[];
+  mandate_chain: unknown[];
+}
+
 export interface RiskDataPoint {
   time: number;
   timeLabel: string;
@@ -80,4 +152,8 @@ export interface DashboardStats {
   avgRiskScore: number;
   actions: ActionBreakdown;
   agentsTracked: number;
+  totalVolume: number;
+  uniqueMerchants: number;
 }
+
+export type ViewId = "overview" | "feed" | "policy" | "mandates" | "screening" | "audit";
