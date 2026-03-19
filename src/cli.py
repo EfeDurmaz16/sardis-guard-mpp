@@ -195,7 +195,7 @@ DIVIDER_WIDTH = 62
 
 def banner():
     print(cyan(BANNER))
-    print(dim("  MPP Policy Firewall CLI".center(DIVIDER_WIDTH)))
+    print(dim("  Intelligence Plane CLI".center(DIVIDER_WIDTH)))
     print()
 
 
@@ -584,7 +584,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="sardis-guard",
         description=textwrap.dedent("""\
-            Sardis Guard CLI — MPP Policy Firewall for AI Agent Payments.
+            Sardis Guard CLI — Intelligence Plane for AI Agent Payments.
 
             Evaluate, simulate, and manage spending policies for AI agents
             through the Machine Payments Protocol (MPP).

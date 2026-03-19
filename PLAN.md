@@ -1,4 +1,4 @@
-# Sardis Guard — MPP Policy Firewall | Hackathon Plan
+# Sardis Guard — Intelligence Plane | Hackathon Plan
 
 **Event:** Tempo MPP Hackathon, March 19 2026, 9:30 AM - 6:30 PM PT (started ~12:00 PT for us)
 **Project:** Sardis Guard — pay-per-evaluation policy firewall for AI agent payments

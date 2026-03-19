@@ -195,7 +195,7 @@ def run_demo():
   4. $3.00 request was DENIED (exceeds both limits)
   5. Agent never overspent — Guard enforced the mandate
 
-  This is Sardis Guard: policy enforcement for the agent economy.
+  This is Sardis Guard: the Intelligence Plane for the agent economy.
   AI agents can reason, but they cannot be trusted with money.
   Sardis is how they earn that trust.
 {'='*60}{RESET}

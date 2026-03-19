@@ -31,7 +31,7 @@ export function Header({ stats, connected }: HeaderProps) {
               Sardis Guard Intelligence Plane
             </h1>
             <p className="text-xs text-sardis-text-dim">
-              MPP Policy Firewall &middot; Real-time Monitoring
+              Intelligence Plane &middot; Real-time Monitoring
             </p>
           </div>
         </div>
