@@ -26,11 +26,13 @@ from src.types import (
 from src.security.dedup import DedupStore
 from src.security.session_binding import compute_session_hash, verify_session_hash
 from src.security.in_flight import InFlightTracker, InFlightEntry
+from src.security.kill_switch import KillSwitchManager, KillSwitchScope
 
 router = APIRouter()
 
 # Security modules
 in_flight_tracker = InFlightTracker()
+kill_switch_mgr = KillSwitchManager()
 
 # These will be set by server.py at startup
 mandate_store = None
@@ -274,6 +276,69 @@ async def screen_address(body: ScreenAddressRequest):
     }
 
 
+# ── Kill Switch Routes ──────────────────────────────────────────────────────
+
+
+class KillSwitchActivateRequest(BaseModel):
+    scope: str  # "global", "org", "agent", "chain"
+    target: str = ""  # org_id, agent_id, or chain name
+    reason: str = "Manual activation"
+    auto_lift_seconds: int = 0  # 0 = manual lift only
+
+
+class KillSwitchDeactivateRequest(BaseModel):
+    scope: str
+    target: str = ""
+
+
+@router.post("/kill-switch/activate")
+async def activate_kill_switch(body: KillSwitchActivateRequest):
+    """Activate a kill switch. Free endpoint (emergency action)."""
+    scope = KillSwitchScope(body.scope)
+    state = kill_switch_mgr.activate(
+        scope=scope,
+        target=body.target,
+        reason=body.reason,
+        auto_lift_seconds=body.auto_lift_seconds,
+        activated_by="operator",
+    )
+    return {
+        "activated": True,
+        "scope": state.scope.value,
+        "target": state.target,
+        "reason": state.reason,
+        "auto_lift_at": state.auto_reactivate_at if state.auto_reactivate_at > 0 else None,
+    }
+
+
+@router.post("/kill-switch/deactivate")
+async def deactivate_kill_switch(body: KillSwitchDeactivateRequest):
+    """Deactivate a kill switch. Free endpoint."""
+    scope = KillSwitchScope(body.scope)
+    was_active = kill_switch_mgr.deactivate(scope, body.target)
+    return {"deactivated": was_active, "scope": body.scope, "target": body.target}
+
+
+@router.get("/kill-switch/status")
+async def kill_switch_status():
+    """List all active kill switches. Free endpoint."""
+    active = kill_switch_mgr.list_active()
+    return {
+        "active_count": len(active),
+        "switches": [
+            {
+                "scope": s.scope.value,
+                "target": s.target,
+                "reason": s.reason,
+                "activated_at": s.activated_at,
+                "auto_lift_at": s.auto_reactivate_at if s.auto_reactivate_at > 0 else None,
+                "activated_by": s.activated_by,
+            }
+            for s in active
+        ],
+    }
+
+
 # ── Dashboard Routes ────────────────────────────────────────────────────────
 
 
@@ -390,7 +455,29 @@ async def evaluate_v2(request: Request, body: EvaluateV2Request):
     caller_id = credential.source or "anonymous"
     agent_id = body.agent_id or caller_id
 
-    # 0. Dedup / replay protection (BEFORE any state mutation)
+    # GATE 1: Kill Switch — FIRST check, before everything else
+    ks_result = kill_switch_mgr.check(
+        agent_id=agent_id,
+        principal_id=body.principal_id,
+        chain=body.network,
+    )
+    if ks_result.blocked:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": "kill_switch_active",
+                "detail": ks_result.summary,
+                "active_switches": [
+                    {"scope": s.scope.value, "target": s.target, "reason": s.reason}
+                    for s in ks_result.active_switches
+                ],
+                "action": "IMMEDIATE_REJECT",
+                "payment": {"tx": receipt.reference},
+            },
+            headers={"Payment-Receipt": receipt.reference},
+        )
+
+    # GATE 2: Dedup / replay protection (BEFORE any state mutation)
     dedup_result = dedup_store.check_all(
         agent_id=agent_id,
         amount=body.amount,
