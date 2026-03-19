@@ -8,7 +8,7 @@ import type {
   ScreeningResult,
 } from "../types";
 
-const API_BASE = "http://localhost:8402";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8402";
 
 export function useApi() {
   const [health, setHealth] = useState<HealthData | null>(null);
