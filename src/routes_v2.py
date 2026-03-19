@@ -216,9 +216,15 @@ async def resume_mandate(body: ResumeMandateRequest):
 
 
 @router.get("/mandates")
-async def list_mandates():
-    """List all mandates. Free endpoint."""
+async def list_mandates(wallet: str = ""):
+    """List mandates, optionally filtered by wallet address. Free endpoint."""
     all_mandates = mandate_store.list_all() if hasattr(mandate_store, 'list_all') else []
+    if wallet:
+        w = wallet.lower()
+        all_mandates = [
+            m for m in all_mandates
+            if w in m.principal_id.lower() or w in m.agent_id.lower()
+        ]
     return {"mandates": [m.to_dict() for m in all_mandates]}
 
 

@@ -10,11 +10,11 @@ import { AuditView } from "./components/views/AuditView";
 import { KillSwitchView } from "./components/views/KillSwitchView";
 import { useEventStream } from "./hooks/useEventStream";
 import { useApi } from "./hooks/useApi";
-import { useWallet } from "./hooks/useWallet";
 import type { ViewId } from "./types";
 
 function App() {
   const [activeView, setActiveView] = useState<ViewId>("overview");
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const { events, riskData, stats, connected } = useEventStream();
   const {
     health,
@@ -32,43 +32,38 @@ function App() {
     deactivateKillSwitch,
   } = useApi();
 
-  const { address: walletAddress } = useWallet();
-
-  // Filter events by connected wallet address (match against agent field which may be a wallet address)
+  // Filter by connected wallet address
   const filteredEvents = useMemo(() => {
     if (!walletAddress) return events;
     const addr = walletAddress.toLowerCase();
     return events.filter((e) => {
       const agent = (e.agent || e.agent_id || "").toLowerCase();
-      return agent === addr || agent.includes(addr.slice(2)); // match with or without 0x prefix
+      return agent.includes(addr) || agent.includes(addr.slice(2));
     });
   }, [events, walletAddress]);
 
-  // Filter risk data by wallet address
   const filteredRiskData = useMemo(() => {
     if (!walletAddress) return riskData;
     const addr = walletAddress.toLowerCase();
     return riskData.filter((r) => {
       const agent = (r.agent || "").toLowerCase();
-      return agent === addr || agent.includes(addr.slice(2));
+      return agent.includes(addr) || agent.includes(addr.slice(2));
     });
   }, [riskData, walletAddress]);
 
-  // Filter mandates by principal_id matching wallet address
   const filteredMandates = useMemo(() => {
     if (!walletAddress) return mandates;
     const addr = walletAddress.toLowerCase();
     return mandates.filter((m) => {
       return (
-        m.principal_id.toLowerCase() === addr ||
+        m.principal_id.toLowerCase().includes(addr) ||
         m.principal_id.toLowerCase().includes(addr.slice(2)) ||
-        m.agent_id.toLowerCase() === addr ||
+        m.agent_id.toLowerCase().includes(addr) ||
         m.agent_id.toLowerCase().includes(addr.slice(2))
       );
     });
   }, [mandates, walletAddress]);
 
-  // Merge SSE stats with API stats
   const mergedStats = {
     ...stats,
     agentsTracked: summary?.active_agents ?? health?.agents_tracked ?? stats.agentsTracked,
@@ -87,7 +82,10 @@ function App() {
       />
 
       <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
-        <WalletBar />
+        <WalletBar
+          onAddressChange={setWalletAddress}
+          currentAddress={walletAddress}
+        />
 
         <main className="flex-1 min-h-0 overflow-hidden">
           {activeView === "overview" && (
