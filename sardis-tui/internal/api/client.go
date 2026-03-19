@@ -194,3 +194,19 @@ func (c *Client) GetEvidencePack(sessionID string) (*EvidencePack, error) {
 	err := c.get("/reports/session/"+sessionID, &ep)
 	return &ep, err
 }
+
+// GetEvents fetches all events from the evidence pack (free endpoint)
+func (c *Client) GetEvents() ([]EvalEvent, error) {
+	ep, err := c.GetEvidencePack("current")
+	if err != nil {
+		return nil, err
+	}
+	return ep.Events, nil
+}
+
+// GetAgentRisk returns GET /agents/{id}/risk
+func (c *Client) GetAgentRisk(agentID string) (*AgentRisk, error) {
+	var ar AgentRisk
+	err := c.get("/agents/"+agentID+"/risk", &ar)
+	return &ar, err
+}

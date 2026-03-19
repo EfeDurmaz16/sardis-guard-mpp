@@ -94,34 +94,33 @@ type ScreenResult struct {
 	Confidence   float64 `json:"confidence"`
 }
 
-// SSE evaluation event
+// EvalEvent is the canonical event shape from /reports/session/current
 type EvalEvent struct {
-	// V1 fields
-	Timestamp float64   `json:"timestamp"`
-	Agent     string    `json:"agent"`
-	Merchant  string    `json:"merchant"`
-	Amount    string    `json:"amount"`
-	Currency  string    `json:"currency"`
-	Network   string    `json:"network"`
-	Category  string    `json:"category"`
-	Type      string    `json:"type"`
-	Verdict   *Verdict  `json:"verdict,omitempty"`
+	EventID            string            `json:"event_id"`
+	Timestamp          float64           `json:"timestamp"`
+	AgentID            string            `json:"agent_id"`
+	PrincipalID        string            `json:"principal_id"`
+	MandateID          string            `json:"mandate_id"`
+	Amount             string            `json:"amount"`
+	Currency           string            `json:"currency"`
+	Network            string            `json:"network"`
+	Merchant           string            `json:"merchant"`
+	Category           string            `json:"category"`
+	ServiceID          string            `json:"service_id"`
+	DestinationAddress string            `json:"destination_address"`
+	Action             string            `json:"action"`
+	RiskAssessment     *RiskAssessment   `json:"risk_assessment,omitempty"`
+	GovernanceResult   *GovernanceResult `json:"governance_result,omitempty"`
+	AMLResult          *AMLResult        `json:"aml_result,omitempty"`
+	EntryHash          string            `json:"entry_hash,omitempty"`
+	PrevHash           string            `json:"prev_hash,omitempty"`
 
-	// V2 fields
-	EventID          string            `json:"event_id,omitempty"`
-	AgentID          string            `json:"agent_id,omitempty"`
-	PrincipalID      string            `json:"principal_id,omitempty"`
-	MandateID        string            `json:"mandate_id,omitempty"`
-	Action           string            `json:"action,omitempty"`
-	DownstreamAllowed bool             `json:"downstream_allowed,omitempty"`
-	RiskAssessment   *RiskAssessment   `json:"risk_assessment,omitempty"`
-	GovernanceResult *GovernanceResult `json:"governance_result,omitempty"`
-	AMLResult        *AMLResult        `json:"aml_result,omitempty"`
-	EntryHash        string            `json:"entry_hash,omitempty"`
-	PrevHash         string            `json:"prev_hash,omitempty"`
+	// SSE-only fields
+	Agent   string   `json:"agent,omitempty"`
+	Verdict *Verdict `json:"verdict,omitempty"`
 }
 
-// GetAgentName returns the agent identifier from either V1 or V2 fields
+// GetAgentName returns the agent identifier
 func (e *EvalEvent) GetAgentName() string {
 	if e.AgentID != "" {
 		return e.AgentID
@@ -129,7 +128,7 @@ func (e *EvalEvent) GetAgentName() string {
 	return e.Agent
 }
 
-// GetAction returns the action from either V1 verdict or V2 action field
+// GetAction returns the action
 func (e *EvalEvent) GetAction() string {
 	if e.Action != "" {
 		return e.Action
@@ -144,10 +143,10 @@ func (e *EvalEvent) GetAction() string {
 }
 
 type Verdict struct {
-	Allowed      bool           `json:"allowed"`
-	Summary      string         `json:"summary"`
-	TotalLatency float64        `json:"total_latency_ms"`
-	Checks       []PolicyCheck  `json:"checks"`
+	Allowed      bool          `json:"allowed"`
+	Summary      string        `json:"summary"`
+	TotalLatency float64       `json:"total_latency_ms"`
+	Checks       []PolicyCheck `json:"checks"`
 }
 
 type PolicyCheck struct {
@@ -158,23 +157,34 @@ type PolicyCheck struct {
 }
 
 type RiskAssessment struct {
-	MLScore          float64 `json:"ml_score"`
-	SequenceScore    float64 `json:"sequence_score"`
-	CorrelationScore float64 `json:"correlation_score"`
-	SanctionsScore   float64 `json:"sanctions_score"`
-	FinalScore       float64 `json:"final_score"`
-	Action           string  `json:"action"`
-	Reasons          []string `json:"reasons"`
+	MLScore          float64            `json:"ml_score"`
+	SequenceScore    float64            `json:"sequence_score"`
+	CorrelationScore float64            `json:"correlation_score"`
+	SanctionsScore   float64            `json:"sanctions_score"`
+	FinalScore       float64            `json:"final_score"`
+	Action           string             `json:"action"`
+	Features         map[string]float64 `json:"features,omitempty"`
+	Reasons          []string           `json:"reasons"`
 }
 
 type GovernanceResult struct {
-	Allowed bool     `json:"allowed"`
-	Checks  []string `json:"checks"`
+	Allowed bool              `json:"allowed"`
+	Action  string            `json:"action"`
+	Reason  string            `json:"reason"`
+	Checks  []GovernanceCheck `json:"checks"`
+}
+
+type GovernanceCheck struct {
+	Check  string `json:"check"`
+	Passed bool   `json:"passed"`
+	Detail string `json:"detail"`
 }
 
 type AMLResult struct {
-	Hit       bool   `json:"hit"`
-	MatchType string `json:"match_type"`
+	Hit          bool    `json:"hit"`
+	MatchType    string  `json:"match_type"`
+	MatchedEntry string  `json:"matched_entry"`
+	Confidence   float64 `json:"confidence"`
 }
 
 // ServiceGraph from GET /dashboard/graph
@@ -192,23 +202,36 @@ type GraphEdge struct {
 
 // AgentRisk from GET /agents/{id}/risk
 type AgentRisk struct {
-	AgentID       string        `json:"agent_id"`
-	Summary       interface{}   `json:"summary"`
-	RiskTimeline  []interface{} `json:"risk_timeline"`
+	AgentID      string          `json:"agent_id"`
+	Summary      AgentSummary    `json:"summary"`
+	RiskTimeline []RiskTimepoint `json:"risk_timeline"`
+}
+
+type AgentSummary struct {
+	AgentID         string  `json:"agent_id"`
+	TotalSpent      float64 `json:"total_spent"`
+	TxCount         int     `json:"tx_count"`
+	UniqueMerchants int     `json:"unique_merchants"`
+	RiskTrend       string  `json:"risk_trend"`
+}
+
+type RiskTimepoint struct {
+	Timestamp  float64 `json:"timestamp"`
+	FinalScore float64 `json:"final_score"`
 }
 
 // EvidencePack from GET /reports/session/{id}
 type EvidencePack struct {
-	SessionID         string        `json:"session_id"`
-	GeneratedAt       float64       `json:"generated_at"`
-	EventCount        int           `json:"event_count"`
-	ChainValid        bool          `json:"chain_valid"`
-	FirstHash         string        `json:"first_hash"`
-	LastHash          string        `json:"last_hash"`
-	Events            []interface{} `json:"events"`
-	MandateChain      []interface{} `json:"mandate_chain"`
-	RiskAssessments   []interface{} `json:"risk_assessments"`
-	SanctionsResults  []interface{} `json:"sanctions_results"`
-	FreezeActions     []interface{} `json:"freeze_actions"`
-	OperatorActions   []interface{} `json:"operator_actions"`
+	SessionID        string      `json:"session_id"`
+	GeneratedAt      float64     `json:"generated_at"`
+	EventCount       int         `json:"event_count"`
+	ChainValid       bool        `json:"chain_valid"`
+	FirstHash        string      `json:"first_hash"`
+	LastHash         string      `json:"last_hash"`
+	Events           []EvalEvent `json:"events"`
+	MandateChain     []Mandate   `json:"mandate_chain"`
+	RiskAssessments  []interface{} `json:"risk_assessments"`
+	SanctionsResults []interface{} `json:"sanctions_results"`
+	FreezeActions    []interface{} `json:"freeze_actions"`
+	OperatorActions  []interface{} `json:"operator_actions"`
 }

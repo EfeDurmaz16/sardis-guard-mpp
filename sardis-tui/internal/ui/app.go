@@ -22,16 +22,14 @@ const (
 
 // Messages
 type (
-	tickMsg         struct{}
-	sseEventMsg     api.EvalEvent
-	sseConnectedMsg bool
-	sseErrorMsg     error
-	healthMsg       *api.HealthCheck
-	summaryMsg      *api.DashboardSummary
-	serviceInfoMsg  *api.ServiceInfo
-	killSwitchMsg   *api.KillSwitchStatus
-	mandatesMsg     *api.MandateList
-	screenMsg       struct {
+	tickMsg        struct{}
+	healthMsg      *api.HealthCheck
+	summaryMsg     *api.DashboardSummary
+	serviceInfoMsg *api.ServiceInfo
+	killSwitchMsg  *api.KillSwitchStatus
+	mandatesMsg    *api.MandateList
+	eventsMsg      []api.EvalEvent
+	screenMsg      struct {
 		Query  string
 		Type   string
 		Result *api.ScreenResult
@@ -46,7 +44,6 @@ type (
 // App is the main Bubble Tea model
 type App struct {
 	client    *api.Client
-	stream    *api.SSEStream
 	width     int
 	height    int
 	activeTab int
@@ -59,7 +56,6 @@ type App struct {
 	info       *api.ServiceInfo
 	killSwitch *api.KillSwitchStatus
 	events     []api.EvalEvent
-	eventCount int
 
 	// View states
 	feedScroll   int
@@ -72,11 +68,9 @@ type App struct {
 // NewApp creates the main application model
 func NewApp() *App {
 	client := api.NewClient()
-	stream := api.NewSSEStream(client.BaseURL)
 
 	return &App{
 		client:       client,
-		stream:       stream,
 		policyState:  views.NewPolicyState(),
 		mandateState: views.NewMandateState(),
 		screenState:  views.NewScreeningState(),
@@ -85,40 +79,26 @@ func NewApp() *App {
 }
 
 func (a *App) Init() tea.Cmd {
-	a.stream.Start()
 	return tea.Batch(
-		a.pollSSE(),
-		a.fetchInitialData(),
+		a.fetchAllData(),
 		a.tick(),
 	)
 }
 
 func (a *App) tick() tea.Cmd {
-	return tea.Tick(5*time.Second, func(t time.Time) tea.Msg {
+	return tea.Tick(10*time.Second, func(t time.Time) tea.Msg {
 		return tickMsg{}
 	})
 }
 
-func (a *App) pollSSE() tea.Cmd {
-	return func() tea.Msg {
-		select {
-		case event := <-a.stream.Events:
-			return sseEventMsg(event)
-		case connected := <-a.stream.Connected:
-			return sseConnectedMsg(connected)
-		case err := <-a.stream.Errors:
-			return sseErrorMsg(err)
-		}
-	}
-}
-
-func (a *App) fetchInitialData() tea.Cmd {
+func (a *App) fetchAllData() tea.Cmd {
 	return tea.Batch(
 		a.fetchHealth(),
 		a.fetchSummary(),
 		a.fetchServiceInfo(),
 		a.fetchKillSwitch(),
 		a.fetchMandates(),
+		a.fetchEvents(),
 	)
 }
 
@@ -172,6 +152,16 @@ func (a *App) fetchMandates() tea.Cmd {
 	}
 }
 
+func (a *App) fetchEvents() tea.Cmd {
+	return func() tea.Msg {
+		events, err := a.client.GetEvents()
+		if err != nil {
+			return apiErrorMsg{"events", err}
+		}
+		return eventsMsg(events)
+	}
+}
+
 func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -187,23 +177,14 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.fetchHealth(),
 			a.fetchSummary(),
 			a.fetchKillSwitch(),
+			a.fetchEvents(),
 			a.tick(),
 		)
 
-	case sseEventMsg:
-		event := api.EvalEvent(msg)
-		a.events = append(a.events, event)
-		a.eventCount++
+	case eventsMsg:
+		a.events = []api.EvalEvent(msg)
 		a.auditState.Events = a.events
-		return a, a.pollSSE()
-
-	case sseConnectedMsg:
-		a.connected = bool(msg)
-		return a, a.pollSSE()
-
-	case sseErrorMsg:
-		a.connected = false
-		return a, a.pollSSE()
+		return a, nil
 
 	case healthMsg:
 		a.health = (*api.HealthCheck)(msg)
@@ -244,6 +225,9 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, nil
 
 	case apiErrorMsg:
+		if msg.Source == "health" {
+			a.connected = false
+		}
 		return a, nil
 	}
 
@@ -271,12 +255,9 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Global keys that always work — even in text input
 	switch key {
 	case "ctrl+c":
-		a.stream.Stop()
 		return a, tea.Quit
 	case "esc":
-		// Esc always returns to overview (escape from any view)
 		if inTextInput {
-			// Let the view handle esc first for internal state
 			switch a.activeTab {
 			case TabPolicy:
 				if a.policyState.Submitted {
@@ -285,7 +266,6 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					a.policyState.Error = ""
 					return a, nil
 				}
-				// Not submitted — switch to overview
 				a.activeTab = TabOverview
 				return a, nil
 			case TabScreening:
@@ -308,7 +288,6 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if !inTextInput {
 		switch key {
 		case "q":
-			a.stream.Stop()
 			return a, tea.Quit
 		case "?":
 			a.showHelp = !a.showHelp
@@ -332,7 +311,7 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			a.activeTab = TabAudit
 			return a, nil
 		case "r":
-			return a, a.fetchInitialData()
+			return a, a.fetchAllData()
 		}
 	}
 
@@ -376,18 +355,6 @@ func (a *App) evaluatePolicy() tea.Cmd {
 	return func() tea.Msg {
 		vals := a.policyState.GetValues()
 
-		reqBody := map[string]interface{}{
-			"amount":   vals["Amount"],
-			"merchant": vals["Merchant"],
-			"currency": vals["Currency"],
-			"network":  vals["Network"],
-			"category": vals["Category"],
-		}
-		if vals["Memo"] != "" && vals["Memo"] != "(optional)" {
-			reqBody["memo"] = vals["Memo"]
-		}
-
-		// simulate is MPP-gated, show the command to run
 		a.policyState.Error = fmt.Sprintf(
 			"Policy simulation requires MPP payment ($0.0005).\n\n"+
 				"  Run this command:\n"+
@@ -502,7 +469,7 @@ func (a *App) View() string {
 	helpbar := RenderHelpBar(a.activeTab, a.width)
 
 	// Status bar
-	statusbar := RenderStatusBar(a.summary, a.eventCount, a.width)
+	statusbar := RenderStatusBar(a.summary, len(a.events), a.width)
 
 	return header + "\n" + content + "\n" + helpbar + "\n" + statusbar
 }

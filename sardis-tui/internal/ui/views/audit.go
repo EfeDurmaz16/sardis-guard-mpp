@@ -218,20 +218,30 @@ func renderAuditDetail(e api.EvalEvent, width int) string {
 		lines = append(lines, "  "+label+t.TextPrimary.Render(f.Value))
 	}
 
-	// Policy checks
-	if e.Verdict != nil {
+	// Governance checks
+	if e.GovernanceResult != nil && len(e.GovernanceResult.Checks) > 0 {
 		lines = append(lines, "")
-		lines = append(lines, "  "+t.TextSecondary.Render("Policy Checks"))
-		for _, c := range e.Verdict.Checks {
+		lines = append(lines, "  "+t.TextSecondary.Render("Governance Checks"))
+		for _, c := range e.GovernanceResult.Checks {
 			var icon string
-			if c.Result == "PASS" {
+			if c.Passed {
 				icon = t.TextGreen.Render("✓")
 			} else {
 				icon = t.TextRed.Render("✗")
 			}
-			name := t.TextMuted.Width(22).Render(c.Name)
-			lines = append(lines, "    "+icon+" "+name+t.TextMuted.Render(c.Reason))
+			name := t.TextMuted.Width(22).Render(c.Check)
+			lines = append(lines, "    "+icon+" "+name+t.TextMuted.Render(c.Detail))
 		}
+	}
+
+	// AML result
+	if e.AMLResult != nil && e.AMLResult.Hit {
+		lines = append(lines, "")
+		lines = append(lines, "  "+t.TextRed.Bold(true).Render("AML/Sanctions Hit"))
+		amlLabel := lipgloss.NewStyle().Width(14).Foreground(t.ColorText50)
+		lines = append(lines, "    "+amlLabel.Render("Match Type")+t.TextRed.Render(e.AMLResult.MatchType))
+		lines = append(lines, "    "+amlLabel.Render("Matched")+t.TextRed.Render(e.AMLResult.MatchedEntry))
+		lines = append(lines, "    "+amlLabel.Render("Confidence")+t.TextAmber.Render(fmt.Sprintf("%.2f", e.AMLResult.Confidence)))
 	}
 
 	// Risk assessment
@@ -253,6 +263,12 @@ func renderAuditDetail(e api.EvalEvent, width int) string {
 		for _, f := range riskFields {
 			label := lipgloss.NewStyle().Width(14).Foreground(t.ColorText50).Render(f.Label)
 			lines = append(lines, "    "+label+t.TextPrimary.Render(f.Value))
+		}
+		if len(r.Reasons) > 0 {
+			lines = append(lines, "    "+lipgloss.NewStyle().Width(14).Foreground(t.ColorText50).Render("Reasons"))
+			for _, reason := range r.Reasons {
+				lines = append(lines, "      "+t.TextAmber.Render("- ")+t.TextSecondary.Render(reason))
+			}
 		}
 	}
 
