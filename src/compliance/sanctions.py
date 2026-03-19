@@ -1,12 +1,19 @@
 """Sardis Guard — OFAC Sanctions Screening.
 
 Downloads and parses the OFAC SDN list for crypto addresses.
-Falls back to a local fixture of ~20 known sanctioned addresses if download fails.
-No Docker/Watchman required.
+Also pulls community-maintained sanctioned address lists from
+0xB10C/ofac-sanctioned-digital-currency-addresses (GitHub, 156 stars).
+Falls back to a local fixture of ~20 known sanctioned addresses if all
+downloads fail.  No Docker/Watchman required.
+
+Entity-name matching uses difflib.SequenceMatcher for higher-quality
+fuzzy matching alongside the existing Levenshtein and token-overlap
+heuristics.
 """
 
 from __future__ import annotations
 
+import difflib
 import json
 import os
 import re
@@ -27,11 +34,21 @@ from src.types import Action
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 OFAC_CACHE_FILE = DATA_DIR / "ofac_addresses.json"
 OFAC_NAMES_CACHE_FILE = DATA_DIR / "ofac_names.json"
+OFAC_0xB10C_CACHE_FILE = DATA_DIR / "ofac_evm_addresses_0xb10c.json"
+OFAC_0xB10C_NON_EVM_CACHE_FILE = DATA_DIR / "ofac_non_evm_addresses_0xb10c.json"
 
 # OFAC SDN Advanced XML (contains digital-currency addresses)
 OFAC_SDN_XML_URL = "https://www.treasury.gov/ofac/downloads/sanctions/1.0/sdn_advanced.xml"
 # Simpler CSV fallback
 OFAC_SDN_CSV_URL = "https://www.treasury.gov/ofac/downloads/sdn.csv"
+
+# 0xB10C community-maintained OFAC address lists (auto-updated nightly)
+# https://github.com/0xB10C/ofac-sanctioned-digital-currency-addresses
+_0xB10C_BASE = (
+    "https://raw.githubusercontent.com/"
+    "0xB10C/ofac-sanctioned-digital-currency-addresses/lists"
+)
+_0xB10C_ASSETS = ["ETH", "ARB", "BSC", "USDC", "USDT", "TRX", "XBT"]
 
 # XML namespace
 OFAC_NS = {"ns": "https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/ADVANCED_XML"}
@@ -221,6 +238,9 @@ class SanctionsScreener:
         1. Fresh download from Treasury (XML)
         2. Local cache file
         3. Built-in fixture
+
+        After loading the primary source, the 0xB10C community list is
+        merged in (download or local cache) to maximise address coverage.
         """
         DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -229,17 +249,20 @@ class SanctionsScreener:
             self._loaded_from = "ofac_download"
             self._last_updated = time.time()
             self._save_cache()
-            return len(self.addresses)
-
-        # Try loading from cache
-        if self._try_load_cache():
+        elif self._try_load_cache():
             self._loaded_from = "cache"
-            return len(self.addresses)
+        else:
+            # Fall back to built-in fixture
+            self._load_fixture()
+            self._loaded_from = "fixture"
+            self._save_cache()  # save fixture to cache for next time
 
-        # Fall back to built-in fixture
-        self._load_fixture()
-        self._loaded_from = "fixture"
-        self._save_cache()  # save fixture to cache for next time
+        # --- Merge 0xB10C community OFAC address list ---
+        merged = self._merge_0xb10c_addresses()
+        if merged > 0:
+            self._loaded_from += "+0xb10c"
+            self._save_cache()
+
         return len(self.addresses)
 
     def _try_download_ofac(self) -> bool:
