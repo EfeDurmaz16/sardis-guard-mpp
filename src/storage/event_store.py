@@ -159,7 +159,11 @@ class EventStore:
         mandate_id: str | None = None,
         limit: int = 50,
     ) -> list[dict[str, Any]]:
-        """Retrieve events with optional filters, newest first."""
+        """Retrieve events with optional filters, oldest first (ASC).
+
+        Hash chain validation requires oldest-to-newest ordering:
+        events[i].prev_hash must equal events[i-1].entry_hash.
+        """
         conn = self._get_conn()
         clauses: list[str] = []
         params: list[Any] = []
@@ -173,7 +177,7 @@ class EventStore:
 
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         rows = conn.execute(
-            f"SELECT * FROM events {where} ORDER BY timestamp DESC LIMIT ?",
+            f"SELECT * FROM events {where} ORDER BY timestamp ASC, rowid ASC LIMIT ?",
             params + [limit],
         ).fetchall()
         return [self._row_to_dict(r) for r in rows]
