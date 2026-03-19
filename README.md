@@ -6,32 +6,33 @@ Built at the [Tempo MPP Hackathon](https://hackathon.tempo.xyz) (March 19, 2026)
 
 **Live now:** [Dashboard](https://guard-dashboard.sardis.sh) | [API](https://sardis-guard-482463483786.us-central1.run.app)
 
-## Try it now (no wallet needed)
+## Try it now
 
+### With Tempo wallet (full experience)
 ```bash
-# Screen a wallet address against OFAC sanctions
-curl -X POST -H "Content-Type: application/json" \
+# 1. Make sure you have tempo CLI and a funded wallet
+tempo wallet whoami
+
+# 2. Evaluate a payment through the 9-gate intelligence pipeline ($0.001)
+tempo request -t -X POST \
+  --json '{"amount":"1.00","merchant":"perplexity.ai","currency":"USDC","network":"tempo"}' \
+  https://sardis-guard-482463483786.us-central1.run.app/evaluate
+
+# 3. Full V2 intelligence evaluation with mandate + sanctions ($0.001)
+tempo request -t -X POST \
+  --json '{"amount":"5.00","merchant":"suspicious.com","destination_address":"0x8589427373D6D84E98730D7795D8f6f8731FDA16","service_id":"unknown"}' \
+  https://sardis-guard-482463483786.us-central1.run.app/evaluate/v2
+```
+
+### Without wallet (free endpoints)
+```bash
+# Screen any wallet address against 750 OFAC-sanctioned addresses
+curl -s -X POST -H "Content-Type: application/json" \
   -d '{"address":"0x8589427373D6D84E98730D7795D8f6f8731FDA16"}' \
   https://sardis-guard-482463483786.us-central1.run.app/screen/address
 
-# Create a spending mandate for an AI agent
-curl -X POST -H "Content-Type: application/json" \
-  -d '{"principal_id":"your_company","agent_id":"your_agent","max_total":"100","max_per_tx":"10"}' \
-  https://sardis-guard-482463483786.us-central1.run.app/mandates/root
-
-# Activate emergency kill switch
-curl -X POST -H "Content-Type: application/json" \
-  -d '{"scope":"agent","target":"rogue_agent","reason":"Testing","auto_lift_seconds":60}' \
-  https://sardis-guard-482463483786.us-central1.run.app/kill-switch/activate
-
-# Check service health
-curl https://sardis-guard-482463483786.us-central1.run.app/health
-```
-
-For MPP-gated endpoints (policy evaluation), you need a [Tempo wallet](https://tempo.xyz):
-```bash
-tempo request -t -X POST --json '{"amount":"1.00","merchant":"test.com"}' \
-  https://sardis-guard-482463483786.us-central1.run.app/evaluate
+# Create spending mandates, check health, activate kill switches
+curl -s https://sardis-guard-482463483786.us-central1.run.app/health
 ```
 
 ## What is this?
