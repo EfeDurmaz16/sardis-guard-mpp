@@ -47,6 +47,11 @@ Built:
    | 9 | researcher | StableEnrich/Apollo | Find leads | ~$0.01 |
    | 10 | researcher | Allium | Check wallet activity | ~$0.01 |
 
+   **Future additions (not in hackathon scope):**
+   - Domain purchasing via StableDomains (PR #381 in MPP directory) or Vercel Domains API wrapped with mpp-proxy
+   - Website generation via fal.ai + StableUpload
+   - Social media setup via StableSocial
+
 4. **Attack/drift detection:**
    - Agent tries to buy something off-scope → DENIED
    - Agent tries to exceed budget → DENIED
