@@ -1,0 +1,98 @@
+═══════════════════════════════════════════════════════════════════════════════
+  SARDIS REPOSITORY AUDIT — START HERE
+═══════════════════════════════════════════════════════════════════════════════
+
+This folder contains a complete audit of the Sardis repository, identifying
+security features we can port into the hackathon demo in 5–25 hours.
+
+═══════════════════════════════════════════════════════════════════════════════
+  📚 WHICH DOCUMENT SHOULD I READ?
+═══════════════════════════════════════════════════════════════════════════════
+
+I'm a...                              Read this first...
+────────────────────────────────────  ──────────────────────────────────────
+Product Manager (1 min decision)      → QUICK_START.md (then AUDIT_SUMMARY.md)
+Engineer (start coding)               → QUICK_START.md (then PORT_CODE_SNIPPETS.md)
+Architect (understand it all)         → docs/sardis_repo_audit.md
+Leadership (ROI analysis)             → AUDIT_SUMMARY.md
+Researcher (details & references)     → docs/sardis_repo_audit.md §1–12
+
+═══════════════════════════════════════════════════════════════════════════════
+  📄 DOCUMENT MAP
+═══════════════════════════════════════════════════════════════════════════════
+
+1. QUICK_START.md (2 min read)
+   → What should we port?
+   → Time estimates & decision matrix
+   → "Start here if you have 2 minutes"
+
+2. AUDIT_SUMMARY.md (10 min read)
+   → Executive summary
+   → Top 5 features with ROI table
+   → Phase 1 (5–6h) vs Phase 2 (20–25h) roadmaps
+   → "Start here if you have 10 minutes"
+
+3. docs/sardis_repo_audit.md (2,500 lines, reference)
+   → Complete feature-by-feature analysis
+   → Production vs. hackathon comparison (12 vs 8 gates)
+   → Implementation checklists for every feature
+   → Code references (line numbers in Sardis repo)
+   → "Read this for everything"
+
+4. docs/PORT_CODE_SNIPPETS.md (copy-paste code)
+   → Kill Switch implementation (100 lines)
+   → Trust Tiers implementation (60 lines)
+   → Goal Drift Detector (120 lines)
+   → Time-Window Limits (70 lines)
+   → Ready-to-integrate patterns
+   → "Copy code from here"
+
+5. AUDIT_COMPLETION.txt (process summary)
+   → What we audited
+   → Files analyzed
+   → Key findings
+
+═══════════════════════════════════════════════════════════════════════════════
+  ⚡ THE 5-MINUTE VERSION
+═══════════════════════════════════════════════════════════════════════════════
+
+PROBLEM:
+  We have 8 security gates. Production has 12. We're missing:
+    - Kill Switch (global circuit breaker)
+    - Goal Drift (behavioral anomaly detection)
+    - Cumulative Limits (lifetime spend cap)
+    - Time-Window Limits (rolling daily/weekly/monthly)
+
+SOLUTION:
+  Port these 4 features. All are port-ready from production code.
+
+TIME INVESTMENT:
+  - Phase 1 (Quick Wins): 5–6 hours → "Wow, that's sophisticated"
+  - Phase 2 (Impressive): 10–14 more hours → "Beats most Series A"
+
+TOP 3 TO START WITH:
+  1. Kill Switch (2–3h) — flip one switch, halt all payments globally
+  2. Trust Tiers (1–2h) — agents graduate from $10/tx to $50k/tx
+  3. AnomalyDashboard UI (1–2h) — real-time behavioral monitoring
+
+DECISION:
+  □ Do Phase 1 only (5–6h) — enough to impress investors
+  □ Do Phase 1 + Phase 2 (20–25h) — production-grade demo
+  □ Just Kill Switch + Trust Tiers (3–4h) — MVP narrative upgrade
+
+═══════════════════════════════════════════════════════════════════════════════
+  🎯 NEXT STEPS
+═══════════════════════════════════════════════════════════════════════════════
+
+Step 1: Read QUICK_START.md (2 min)
+Step 2: Decide which phase (5h or 25h?)
+Step 3: Read AUDIT_SUMMARY.md (10 min)
+Step 4: For builders: Read QUICK_START.md again + docs/PORT_CODE_SNIPPETS.md
+Step 5: Start with Kill Switch (copy code from PORT_CODE_SNIPPETS.md §1)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Questions? Read the full audit: docs/sardis_repo_audit.md
+Ready to build? Start with: docs/PORT_CODE_SNIPPETS.md
+
+═══════════════════════════════════════════════════════════════════════════════
