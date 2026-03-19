@@ -6,6 +6,7 @@ spend propagation, and freeze/resume operations.
 
 from __future__ import annotations
 
+import threading
 from decimal import Decimal
 from typing import Optional
 
@@ -18,6 +19,7 @@ class MandateStore:
     def __init__(self) -> None:
         self._mandates: dict[str, MandateNode] = {}
         self._agent_index: dict[str, str] = {}  # agent_id -> mandate_id
+        self._lock = threading.Lock()
 
     def list_all(self) -> list[MandateNode]:
         """Return all mandates."""
@@ -68,8 +70,9 @@ class MandateStore:
             expires_at=expires_at,
         )
 
-        self._mandates[node.mandate_id] = node
-        self._agent_index[agent_id] = node.mandate_id
+        with self._lock:
+            self._mandates[node.mandate_id] = node
+            self._agent_index[agent_id] = node.mandate_id
         return node
 
     # ------------------------------------------------------------------
@@ -100,77 +103,78 @@ class MandateStore:
           - Delegation depth must not exceed max_delegation_depth.
           - Parent must be active.
         """
-        parent = self._mandates.get(parent_id)
-        if parent is None:
-            raise ValueError(f"Parent mandate {parent_id} not found")
-        if not parent.is_active:
-            raise ValueError(f"Parent mandate {parent_id} is not active ({parent.status.value})")
-
         max_total = Decimal(str(max_total))
         max_per_tx = Decimal(str(max_per_tx))
         approval_threshold = Decimal(str(approval_threshold))
 
-        # --- depth check ---
-        new_depth = parent.delegation_depth + 1
-        if new_depth > parent.max_delegation_depth:
-            raise ValueError(
-                f"Delegation depth {new_depth} exceeds max {parent.max_delegation_depth}"
+        with self._lock:
+            parent = self._mandates.get(parent_id)
+            if parent is None:
+                raise ValueError(f"Parent mandate {parent_id} not found")
+            if not parent.is_active:
+                raise ValueError(f"Parent mandate {parent_id} is not active ({parent.status.value})")
+
+            # --- depth check ---
+            new_depth = parent.delegation_depth + 1
+            if new_depth > parent.max_delegation_depth:
+                raise ValueError(
+                    f"Delegation depth {new_depth} exceeds max {parent.max_delegation_depth}"
+                )
+
+            # --- budget check ---
+            if max_total > parent.remaining:
+                raise ValueError(
+                    f"Child max_total ${max_total} exceeds parent remaining ${parent.remaining}"
+                )
+            if max_per_tx > parent.max_per_tx:
+                raise ValueError(
+                    f"Child max_per_tx ${max_per_tx} exceeds parent max_per_tx ${parent.max_per_tx}"
+                )
+
+            # --- scope narrowing ---
+            child_services = self._narrow_scope(
+                parent.allowed_services, allowed_services, "services"
+            )
+            child_merchants = self._narrow_scope(
+                parent.allowed_merchants, allowed_merchants, "merchants"
+            )
+            child_chains = self._narrow_scope(
+                parent.allowed_chains, allowed_chains, "chains"
+            )
+            child_currencies = self._narrow_scope(
+                parent.allowed_currencies, allowed_currencies, "currencies"
+            )
+            child_categories = self._narrow_scope(
+                parent.allowed_categories, allowed_categories, "categories"
             )
 
-        # --- budget check ---
-        if max_total > parent.remaining:
-            raise ValueError(
-                f"Child max_total ${max_total} exceeds parent remaining ${parent.remaining}"
-            )
-        if max_per_tx > parent.max_per_tx:
-            raise ValueError(
-                f"Child max_per_tx ${max_per_tx} exceeds parent max_per_tx ${parent.max_per_tx}"
+            # Blocked merchants: union of parent + child
+            child_blocked = list(
+                set(parent.blocked_merchants) | set(blocked_merchants or [])
             )
 
-        # --- scope narrowing ---
-        child_services = self._narrow_scope(
-            parent.allowed_services, allowed_services, "services"
-        )
-        child_merchants = self._narrow_scope(
-            parent.allowed_merchants, allowed_merchants, "merchants"
-        )
-        child_chains = self._narrow_scope(
-            parent.allowed_chains, allowed_chains, "chains"
-        )
-        child_currencies = self._narrow_scope(
-            parent.allowed_currencies, allowed_currencies, "currencies"
-        )
-        child_categories = self._narrow_scope(
-            parent.allowed_categories, allowed_categories, "categories"
-        )
+            node = MandateNode(
+                parent_id=parent_id,
+                principal_id=parent.principal_id,
+                agent_id=agent_id,
+                max_total=max_total,
+                max_per_tx=max_per_tx,
+                spent=Decimal("0"),
+                remaining=max_total,
+                allowed_services=child_services,
+                allowed_merchants=child_merchants,
+                blocked_merchants=child_blocked,
+                allowed_chains=child_chains,
+                allowed_currencies=child_currencies,
+                allowed_categories=child_categories,
+                approval_threshold=approval_threshold,
+                delegation_depth=new_depth,
+                max_delegation_depth=parent.max_delegation_depth,
+                expires_at=expires_at,
+            )
 
-        # Blocked merchants: union of parent + child
-        child_blocked = list(
-            set(parent.blocked_merchants) | set(blocked_merchants or [])
-        )
-
-        node = MandateNode(
-            parent_id=parent_id,
-            principal_id=parent.principal_id,
-            agent_id=agent_id,
-            max_total=max_total,
-            max_per_tx=max_per_tx,
-            spent=Decimal("0"),
-            remaining=max_total,
-            allowed_services=child_services,
-            allowed_merchants=child_merchants,
-            blocked_merchants=child_blocked,
-            allowed_chains=child_chains,
-            allowed_currencies=child_currencies,
-            allowed_categories=child_categories,
-            approval_threshold=approval_threshold,
-            delegation_depth=new_depth,
-            max_delegation_depth=parent.max_delegation_depth,
-            expires_at=expires_at,
-        )
-
-        self._mandates[node.mandate_id] = node
-        self._agent_index[agent_id] = node.mandate_id
+            self._mandates[node.mandate_id] = node
+            self._agent_index[agent_id] = node.mandate_id
         return node
 
     # ------------------------------------------------------------------
